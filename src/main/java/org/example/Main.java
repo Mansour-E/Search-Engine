@@ -15,16 +15,14 @@ public class Main {
     public static void main(String[] args) throws IOException, InterruptedException {
 
 
-        // THIS PART ID FOR EXERCISE  1 + 2
+        // THIS PART BELONGS TO EXERCISE  1 + 2
 
-        DBConnection db = new DBConnection("IS-Project", "postgres", "***");
+        DBConnection db = new DBConnection("IS-Project", "postgres", "****");
 
-        // db.createTables(connection);
+        Crawler crawler = new Crawler( db, "https://www.youtube.com/watch?v=CGE1sz-ulu8", 3, 3, true );
+        crawler.crawl();
 
-        // Crawler crawler = new Crawler( db, "https://www.youtube.com/watch?v=CGE1sz-ulu8", 3, 3, true );
-        // crawler.crawl();
-
-        // THIS PART ID FOR EXERCISE  3
+        // THIS PART BELONGS TO EXERCISE  3
         /*
         Scanner scanner = new Scanner(System.in);
         try {
