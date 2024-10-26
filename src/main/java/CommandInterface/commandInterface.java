@@ -14,11 +14,20 @@ public class commandInterface {
 
 
     public static void executeSearch (DBConnection db, String[] searchTerms, boolean isConjuctive, int resultSize ) {
-        List<SearchResult> foundItemms = new ArrayList<>();
+        List<SearchResult> foundItems;
         if(isConjuctive) {
-            foundItemms = db.conjuntiveCrawling (searchTerms,resultSize);
+            foundItems = db.conjuntiveCrawling (searchTerms,resultSize);
         }else {
-            foundItemms = db.disjunctiveCrawling(searchTerms,resultSize);
+            foundItems = db.disjunctiveCrawling(searchTerms,resultSize);
+        }
+
+
+        if(foundItems.size() == 0) {
+            System.out.println("there are noterms that match these words");
+        }
+        for (int i = 0; i < foundItems.size(); i++) {
+            SearchResult foundItem = foundItems.get(i);
+            System.out.println("rank " + (i+1) + ": " + foundItem.getUrl() + " (Score: " + foundItem.getScore() + ")");
         }
 
     }

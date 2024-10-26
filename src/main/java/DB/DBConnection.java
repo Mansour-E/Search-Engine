@@ -134,7 +134,7 @@ public class DBConnection {
 
 
     // Queries For Exercise 3
-    public List<SearchResult> conjuntiveCrawling (String[] searchedTerms, int resultSize) {
+    public List<SearchResult> conjuntiveCrawling (String[] searchedTerms, int resultSize ) {
         int searchedTermsCount = searchedTerms.length;
         List<SearchResult> foundItems = new ArrayList<>();
 
@@ -190,7 +190,10 @@ public class DBConnection {
         try (PreparedStatement preparedStatement = connection.prepareStatement(disjunctiveQuery)) {
             for (int i = 0; i < searchedTermsCount; i++) {
                 preparedStatement.setString(i + 1, searchedTerms[i]);
+
             }
+            preparedStatement.setInt(searchedTermsCount + 1, resultSize);
+
 
             ResultSet resultSet = preparedStatement.executeQuery();
             while (resultSet.next()) {

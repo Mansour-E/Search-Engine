@@ -14,20 +14,21 @@ import static CommandInterface.commandInterface.executeSearch;
 public class Main {
     public static void main(String[] args) throws IOException, InterruptedException {
 
-         DBConnection db = new DBConnection("IS-Project", "postgres", "Yessin.10");
+        // For Quick Connection with DB
+
+        DBConnection db = new DBConnection("IS-Project", "postgres", "***");
 
         // db.createTables(connection);
 
-        // Crawler crawler = new Crawler( db, connection, "https://www.youtube.com/watch?v=CGE1sz-ulu8", 3, 3, true );
+        // Crawler crawler = new Crawler( db, "https://www.youtube.com/watch?v=CGE1sz-ulu8", 3, 3, true );
         // crawler.crawl();
 
-        // db.disjunctiveCrawling(connection, Arrays.asList("ok", "var"));
-
-        // create the connection with Db
         Scanner scanner = new Scanner(System.in);
         try {
+
             /*
-            System.out.println("Enter the Database name");
+            // create the connection with Db
+            System.out.print("Enter the Database name:");
             String dbUrl = scanner.nextLine();
             System.out.print("Enter Database Owner: ");
             String dbOwner = scanner.nextLine();
@@ -35,10 +36,7 @@ public class Main {
             String dbPassword = scanner.nextLine();
 
             DBConnection db = new DBConnection(dbUrl,dbOwner, dbPassword );
-            Connection connection = db.connectToDb();
-
              */
-
 
             while (true) {
                 System.out.print("Enter search terms (or type 'exit' to quit): ");

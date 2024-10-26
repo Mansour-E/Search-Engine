@@ -11,4 +11,15 @@ public class SearchResult {
         this.score = score;
     }
 
+    public int getDocID() {
+        return docID;
+    }
+
+    public String getUrl() {
+        return url;
+    }
+
+    public int getScore() {
+        return score;
+    }
 }
