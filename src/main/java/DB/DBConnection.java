@@ -134,13 +134,15 @@ public class DBConnection {
 
 
     // Queries For Exercise 3
-    public List<SearchResult> conjuntiveCrawling (String[] searchedTerms, int resultSize ) {
+    public List<SearchResult> conjuntiveCrawling (String[] searchedTerms, int resultSize )  {
         int searchedTermsCount = searchedTerms.length;
         List<SearchResult> foundItems = new ArrayList<>();
 
+
         // TODO change SUM(term_frequency) with SUM(frequency_score) * 2 !!!!
         String insertedSearchedTerms = String.join(",", Collections.nCopies(searchedTermsCount, "?"));
-        String conjunctiveQuery = "SELECT d.docid, d.url, f.score FROM documents as d\n" +
+        String conjunctiveQuery = "CREATE INDEX IF NOT EXISTS idx_term_docid ON features (term, docid); \n" +
+                "SELECT d.docid, d.url, f.score FROM documents as d\n" +
                 "jOIN (" +
                     "SELECT docid , SUM(term_frequency) as score FROM features WHERE term IN (" + insertedSearchedTerms + ")\n" +
                     "GROUP BY docid HAVING COUNT(DISTINCT term) = ? \n" +
