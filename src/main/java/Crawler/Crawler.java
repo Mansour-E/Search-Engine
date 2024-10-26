@@ -4,7 +4,7 @@ import DB.DBConnection;
 import Indexer.Indexer;
 
 import java.io.IOException;
-import java.sql.Connection;
+import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -14,22 +14,18 @@ import java.util.concurrent.TimeUnit;
 
 public class Crawler {
     DBConnection db;
-    Connection connection;
     String rootUrl;
-    int rootID;
     int depthToCrawl;
     int nbrToCrawl;
     Boolean flag;
 
     int crawledUrlCount = 0;
-    int currentCrawledDepth = 0;
     Queue<URLDepthPair> urlQueue = new LinkedList<>();
     Set<String> visitedPages = new HashSet<>();
     ExecutorService threadPool;
 
-    public Crawler(DBConnection db, Connection connection, String rootUrl , int depthToCrawl, int nbrToCrawl, Boolean flag) {
+    public Crawler(DBConnection db, String rootUrl , int depthToCrawl, int nbrToCrawl, Boolean flag) {
         this.db = db;
-        this.connection = connection;
         this.rootUrl = rootUrl;
         this.depthToCrawl = depthToCrawl;
         this.nbrToCrawl = nbrToCrawl;
@@ -40,10 +36,17 @@ public class Crawler {
         urlQueue.add(new URLDepthPair(-1, rootUrl, 0));
     }
 
+
     public void crawl() throws IOException {
         while (!urlQueue.isEmpty() && crawledUrlCount < nbrToCrawl) {
 
             URLDepthPair urlDepthPair = urlQueue.poll();
+
+            Date d = new Date();
+            SimpleDateFormat ft = new SimpleDateFormat("hh:mm:ss");
+            System.out.println("Executing Time for link Id " + urlDepthPair.id + "and link url "+urlDepthPair.url + " = " + ft.format(d));
+
+
             crawlPage(urlDepthPair);
 
             /*
@@ -75,6 +78,9 @@ public class Crawler {
 
         visitedPages.add(url);
         crawledUrlCount++;
+        System.out.println("visitedPages " + visitedPages);
+        System.out.println("crawledUrlCount " + crawledUrlCount);
+
 
         // Fetch the page content
         XhtmlConverter xhtmlConverter = new XhtmlConverter(url);
@@ -83,7 +89,7 @@ public class Crawler {
         // Create document in the database
         String crawledDate = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
         if (docId == -1 ) {
-            docId = db.insertDocument(connection,url, crawledDate);
+            docId = db.insertDocument(url, crawledDate);
         }else {
             // IDEA
             // update the crawledDate
@@ -92,7 +98,7 @@ public class Crawler {
         }
 
         // Index the page using the Indexer
-        Indexer indexer = new Indexer(db, connection, htmlContent, docId);
+        Indexer indexer = new Indexer(db, htmlContent, docId);
         indexer.indexHTMlContent();
 
         // Add child links to the queue for further crawling

@@ -40,7 +40,6 @@ public class Parser {
         return stemmedWords;
     }
 
-
     public HashMap<String, Integer> parseContent(String xhtmlString) throws IOException {
         //extract text content(Remove a Tags and other Tags)
         String noLinksContent = xhtmlString.replaceAll("<a\\s+[^>]*>(.*?)</a>", "");
@@ -84,7 +83,7 @@ public class Parser {
 
             } catch (IOException e) {
                 System.err.println("Error unshortening URL: " + e.getMessage());
-                throw e;
+                // throw e;
             }
         }
 
