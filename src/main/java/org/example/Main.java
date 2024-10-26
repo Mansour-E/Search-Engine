@@ -14,7 +14,8 @@ import static CommandInterface.commandInterface.executeSearch;
 public class Main {
     public static void main(String[] args) throws IOException, InterruptedException {
 
-        // For Quick Connection with DB
+
+        // THIS PART ID FOR EXERCISE  1 + 2
 
         DBConnection db = new DBConnection("IS-Project", "postgres", "***");
 
@@ -23,10 +24,10 @@ public class Main {
         // Crawler crawler = new Crawler( db, "https://www.youtube.com/watch?v=CGE1sz-ulu8", 3, 3, true );
         // crawler.crawl();
 
+        // THIS PART ID FOR EXERCISE  3
+        /*
         Scanner scanner = new Scanner(System.in);
         try {
-
-            /*
             // create the connection with Db
             System.out.print("Enter the Database name:");
             String dbUrl = scanner.nextLine();
@@ -36,7 +37,6 @@ public class Main {
             String dbPassword = scanner.nextLine();
 
             DBConnection db = new DBConnection(dbUrl,dbOwner, dbPassword );
-             */
 
             while (true) {
                 System.out.print("Enter search terms (or type 'exit' to quit): ");
@@ -58,7 +58,8 @@ public class Main {
             e.printStackTrace();
         } finally {
             scanner.close();
-    }
+        }
+        */
     }
 
 }
