@@ -52,6 +52,25 @@ public class DBConnection {
         return connection;
     }
 
+    //zum 2te Aufgabe
+    public void calculateTF() {
+        String updateTFQuery = """
+            UPDATE features
+            SET tf = CASE
+                WHEN term_frequency > 0 THEN 1 + LOG(term_frequency)
+                ELSE 0
+            END
+        """;
+
+        try (Statement stmt = connection.createStatement()) {
+            stmt.executeUpdate(updateTFQuery);
+            System.out.println("TF-Werte berechnet und aktualisiert.");
+        } catch (SQLException e) {
+            System.err.println("Fehler bei der Berechnung des TF-Werts: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
     public void createDocumentsTable() {
         Statement statement;
         try {
