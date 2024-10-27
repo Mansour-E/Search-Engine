@@ -109,6 +109,12 @@ public class DBConnection {
             e.printStackTrace();
         }
     }
+    public void reCompute() {
+        // Berechne TF, IDF und TF*IDF neu
+        calculateTF();       // Berechne Term Frequency
+        calculateIDF();      // Berechne Inverse Document Frequency
+        calculateTFIDF();    // Berechne TF*IDF
+    }
 
     public void createDocumentsTable() {
         Statement statement;
