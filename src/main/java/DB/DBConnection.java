@@ -70,6 +70,7 @@ public class DBConnection {
             e.printStackTrace();
         }
     }
+
     public void calculateIDF() {
         // Abfrage für die Gesamtzahl der Dokumente
         String totalDocsQuery = "SELECT COUNT(*) AS total_documents FROM documents";
@@ -93,6 +94,22 @@ public class DBConnection {
             e.printStackTrace();
         }
     }
+
+    public void calculateTFIDF() {
+        String updateTFIDFQuery = """
+        UPDATE features
+        SET tfidf = tf * idf
+    """;
+
+        try (Statement stmt = connection.createStatement()) {
+            stmt.executeUpdate(updateTFIDFQuery);
+            System.out.println("TF*IDF-Werte berechnet und aktualisiert.");
+        } catch (SQLException e) {
+            System.err.println("Fehler bei der Berechnung des TF*IDF-Werts: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
     public void createDocumentsTable() {
         Statement statement;
         try {
