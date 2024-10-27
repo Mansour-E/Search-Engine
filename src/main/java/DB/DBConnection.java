@@ -179,6 +179,7 @@ public class DBConnection {
             if (resultSet.next()) {
                 int docid = resultSet.getInt("docid");
                 // System.out.println("Document " + docid + " is inserted");
+                reCompute(); // Aktualisiere TF, IDF und TF*IDF nach dem Hinzufügen eines neuen Dokuments
                 return docid;
             }
         } catch (SQLException e) {
