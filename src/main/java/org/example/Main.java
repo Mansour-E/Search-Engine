@@ -17,9 +17,9 @@ public class Main {
 
         // THIS PART BELONGS TO EXERCISE  1 + 2
 
-        DBConnection db = new DBConnection("IS-Project", "postgres", "****");
+        DBConnection db = new DBConnection("IS-Project", "postgres", "Yessin.10");
 
-        Crawler crawler = new Crawler( db, "https://www.youtube.com/watch?v=CGE1sz-ulu8", 3, 3, true );
+        Crawler crawler = new Crawler( db, "https://en.wikipedia.org/wiki/Parnassia_palustris", 3, 3, true );
         crawler.crawl();
 
         // THIS PART BELONGS TO EXERCISE  3

@@ -94,23 +94,21 @@ doing          | -ing form
 
  |          | AUXILIARIES
  |            | WILL
- |will
+ will
 
 would
 
- |            | SHALL
- |shall
+shall       | SHALL
 
 should
 
- |            | CAN
- |can
+ |     | CAN
+ can
 
 could
 
- |            | MAY
- |may
- |might
+  may         | MAY
+ might
  |            | MUST
  |must
  |            | OUGHT

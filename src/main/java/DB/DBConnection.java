@@ -2,10 +2,10 @@ package DB;
 import CommandInterface.SearchResult;
 
 import java.sql.*;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
+
+import static Indexer.Parser.stemWord;
 
 
 public class DBConnection {
@@ -140,6 +140,10 @@ public class DBConnection {
         List<SearchResult> foundItems = new ArrayList<>();
 
 
+        List<String> stemmedSearchedTerms = Arrays.stream(searchedTerms)
+                .map(term -> stemWord(term))  // Apply stemming to each term
+                .collect(Collectors.toList());
+
         // TODO change SUM(term_frequency) with SUM(frequency_score) * 2 !!!!
         String insertedSearchedTerms = String.join(",", Collections.nCopies(searchedTermsCount, "?"));
         String conjunctiveQuery = "CREATE INDEX IF NOT EXISTS idx_term_docid ON features (term, docid); \n" +
@@ -154,7 +158,7 @@ public class DBConnection {
 
         try (PreparedStatement preparedStatement = connection.prepareStatement(conjunctiveQuery)) {
             for (int i = 0; i < searchedTermsCount; i++) {
-                preparedStatement.setString(i + 1, searchedTerms[i]);
+                preparedStatement.setString(i + 1, stemmedSearchedTerms.get(i));
             }
 
             preparedStatement.setInt(searchedTermsCount + 1, searchedTermsCount);

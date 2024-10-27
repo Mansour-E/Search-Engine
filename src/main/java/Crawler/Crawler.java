@@ -84,7 +84,7 @@ public class Crawler {
 
         // Fetch the page content
         XhtmlConverter xhtmlConverter = new XhtmlConverter(url);
-        String htmlContent = xhtmlConverter.convertUrl();
+        String htmlContent = xhtmlConverter.convertToXHML();
 
         // Create document in the database
         String crawledDate = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
