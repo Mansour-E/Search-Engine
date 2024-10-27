@@ -70,7 +70,29 @@ public class DBConnection {
             e.printStackTrace();
         }
     }
+    public void calculateIDF() {
+        // Abfrage für die Gesamtzahl der Dokumente
+        String totalDocsQuery = "SELECT COUNT(*) AS total_documents FROM documents";
 
+        // Abfrage zum Aktualisieren des IDF-Werts für jeden Term
+        String updateIDFQuery = """
+            UPDATE features
+            SET idf = LOG((SELECT COUNT(*) FROM documents) / (SELECT COUNT(DISTINCT docid) FROM features WHERE term = features.term))
+        """;
+
+        try (Statement stmt = connection.createStatement()) {
+            // Total Documents Anzahl
+            ResultSet rs = stmt.executeQuery(totalDocsQuery);
+            int totalDocuments = rs.next() ? rs.getInt("total_documents") : 1; // Vermeidung von Division durch Null
+
+            // Aktualisierung der IDF-Werte
+            stmt.executeUpdate(updateIDFQuery.replace("COUNT(*) FROM documents", String.valueOf(totalDocuments)));
+            System.out.println("IDF-Werte berechnet und aktualisiert.");
+        } catch (SQLException e) {
+            System.err.println("Fehler bei der Berechnung des IDF-Werts: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
     public void createDocumentsTable() {
         Statement statement;
         try {
