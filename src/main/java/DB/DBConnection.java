@@ -15,6 +15,7 @@ public class DBConnection {
     public DBConnection(String dbName, String dbOwner, String dbPassword) {
         this.connection = this.connectToDb(dbName, dbOwner, dbPassword);
         createTables();
+        initializeSchema();
     }
     // Queries for Exercise 2
     private void initializeSchema() {
