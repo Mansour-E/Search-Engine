@@ -16,6 +16,18 @@ public class DBConnection {
         this.connection = this.connectToDb(dbName, dbOwner, dbPassword);
         createTables();
     }
+    //Queries For Exercise 2
+    private void initializeSchema() {
+        try (Statement stmt = connection.createStatement()) {
+            // Add new columns if they don't already exist
+            stmt.executeUpdate("ALTER TABLE features ADD COLUMN IF NOT EXISTS tf REAL");
+            stmt.executeUpdate("ALTER TABLE features ADD COLUMN IF NOT EXISTS idf REAL");
+            stmt.executeUpdate("ALTER TABLE features ADD COLUMN IF NOT EXISTS tfidf REAL");
+        } catch (Exception e) {
+            System.err.println("Error initializing database schema: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
 
     // Queries For Exercise 1
     public Connection connectToDb( String dbName, String dbOwner, String dbPassword) {
