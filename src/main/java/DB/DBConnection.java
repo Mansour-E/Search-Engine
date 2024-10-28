@@ -17,21 +17,6 @@ public class DBConnection {
         createTables();
         initializeSchema();
     }
-    // Queries for Exercise 2
-    private void initializeSchema() {
-        try (Statement stmt = connection.createStatement()) {
-            // Add new columns with default values if they don't already exist
-            stmt.executeUpdate("ALTER TABLE features ADD COLUMN IF NOT EXISTS tf REAL DEFAULT 0");
-            stmt.executeUpdate("ALTER TABLE features ADD COLUMN IF NOT EXISTS idf REAL DEFAULT 0");
-            stmt.executeUpdate("ALTER TABLE features ADD COLUMN IF NOT EXISTS tfidf REAL DEFAULT 0");
-
-            // Create index on term for efficient TF*IDF calculations
-            stmt.executeUpdate("CREATE INDEX IF NOT EXISTS idx_term_features ON features (term)");
-        } catch (Exception e) {
-            System.err.println("Error initializing database schema: " + e.getMessage());
-            e.printStackTrace();
-        }
-    }
 
     // Queries For Exercise 1
     public Connection connectToDb( String dbName, String dbOwner, String dbPassword) {
@@ -50,68 +35,6 @@ public class DBConnection {
             System.out.println(e);
         }
         return connection;
-    }
-
-    //zum 2te Aufgabe
-    public void calculateTF() {
-        String updateTFQuery = """
-            UPDATE features
-            SET tf = CASE
-                WHEN term_frequency > 0 THEN 1 + LOG(term_frequency)
-                ELSE 0
-            END
-        """;
-
-        try (Statement stmt = connection.createStatement()) {
-            stmt.executeUpdate(updateTFQuery);
-            System.out.println("TF-Werte berechnet und aktualisiert.");
-        } catch (SQLException e) {
-            System.err.println("Fehler bei der Berechnung des TF-Werts: " + e.getMessage());
-            e.printStackTrace();
-        }
-    }
-
-    public void calculateIDF() {
-        String updateIDFQuery = """
-        UPDATE features
-        SET idf = LOG(? / (SELECT COUNT(DISTINCT docid) FROM features WHERE term = features.term))
-    """;
-
-        try (PreparedStatement stmt = connection.prepareStatement(updateIDFQuery);
-             Statement totalDocsStmt = connection.createStatement()) {
-
-            // Berechne die Gesamtzahl der Dokumente
-            ResultSet rs = totalDocsStmt.executeQuery("SELECT COUNT(*) AS total_documents FROM documents");
-            int totalDocuments = rs.next() ? rs.getInt("total_documents") : 1; // Vermeide Division durch Null
-
-            stmt.setInt(1, totalDocuments);
-            stmt.executeUpdate();
-            System.out.println("IDF-Werte berechnet und aktualisiert.");
-        } catch (SQLException e) {
-            System.err.println("Fehler bei der Berechnung des IDF-Werts: " + e.getMessage());
-            e.printStackTrace();
-        }
-    }
-
-    public void calculateTFIDF() {
-        String updateTFIDFQuery = """
-        UPDATE features
-        SET tfidf = tf * idf
-    """;
-
-        try (Statement stmt = connection.createStatement()) {
-            stmt.executeUpdate(updateTFIDFQuery);
-            System.out.println("TF*IDF-Werte berechnet und aktualisiert.");
-        } catch (SQLException e) {
-            System.err.println("Fehler bei der Berechnung des TF*IDF-Werts: " + e.getMessage());
-            e.printStackTrace();
-        }
-    }
-    public void reCompute() {
-        // Berechne TF, IDF und TF*IDF neu
-        calculateTF();       // Berechne Term Frequency
-        calculateIDF();      // Berechne Inverse Document Frequency
-        calculateTFIDF();    // Berechne TF*IDF
     }
 
     public void createDocumentsTable() {
@@ -212,6 +135,91 @@ public class DBConnection {
         }
     }
 
+    // Queries For Exercise 2
+    // TODO: You don’t need initializeSchema; add the columns to the features table when it is created.
+    // Please modify the comments and the System.out output to English.
+    // In the Indexer file, make sure to calculate the score after all terms of a document are inserted, not after each document is added (recompute).
+    // create Other branch EX2 :p
+
+
+    // Queries for Exercise 2
+    private void initializeSchema() {
+        try (Statement stmt = connection.createStatement()) {
+            // Add new columns with default values if they don't already exist
+            stmt.executeUpdate("ALTER TABLE features ADD COLUMN IF NOT EXISTS tf REAL DEFAULT 0");
+            stmt.executeUpdate("ALTER TABLE features ADD COLUMN IF NOT EXISTS idf REAL DEFAULT 0");
+            stmt.executeUpdate("ALTER TABLE features ADD COLUMN IF NOT EXISTS tfidf REAL DEFAULT 0");
+
+            // Create index on term for efficient TF*IDF calculations
+            stmt.executeUpdate("CREATE INDEX IF NOT EXISTS idx_term_features ON features (term)");
+        } catch (Exception e) {
+            System.err.println("Error initializing database schema: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    public void calculateTF() {
+        String updateTFQuery = """
+            UPDATE features
+            SET tf = CASE
+                WHEN term_frequency > 0 THEN 1 + LOG(term_frequency)
+                ELSE 0
+            END
+        """;
+
+        try (Statement stmt = connection.createStatement()) {
+            stmt.executeUpdate(updateTFQuery);
+            System.out.println("TF-Werte berechnet und aktualisiert.");
+        } catch (SQLException e) {
+            System.err.println("Fehler bei der Berechnung des TF-Werts: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    public void calculateIDF() {
+        String updateIDFQuery = """
+        UPDATE features
+        SET idf = LOG(? / (SELECT COUNT(DISTINCT docid) FROM features WHERE term = features.term))
+    """;
+
+        try (PreparedStatement stmt = connection.prepareStatement(updateIDFQuery);
+             Statement totalDocsStmt = connection.createStatement()) {
+
+            // Berechne die Gesamtzahl der Dokumente
+            ResultSet rs = totalDocsStmt.executeQuery("SELECT COUNT(*) AS total_documents FROM documents");
+            int totalDocuments = rs.next() ? rs.getInt("total_documents") : 1; // Vermeide Division durch Null
+
+            stmt.setInt(1, totalDocuments);
+            stmt.executeUpdate();
+            System.out.println("IDF-Werte berechnet und aktualisiert.");
+        } catch (SQLException e) {
+            System.err.println("Fehler bei der Berechnung des IDF-Werts: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    public void calculateTFIDF() {
+        String updateTFIDFQuery = """
+        UPDATE features
+        SET tfidf = tf * idf
+    """;
+
+        try (Statement stmt = connection.createStatement()) {
+            stmt.executeUpdate(updateTFIDFQuery);
+            System.out.println("TF*IDF-Werte berechnet und aktualisiert.");
+        } catch (SQLException e) {
+            System.err.println("Fehler bei der Berechnung des TF*IDF-Werts: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+    public void reCompute() {
+        // Berechne TF, IDF und TF*IDF neu
+        calculateTF();       // Berechne Term Frequency
+        calculateIDF();      // Berechne Inverse Document Frequency
+        calculateTFIDF();    // Berechne TF*IDF
+    }
+
+
 
     // Queries For Exercise 3
     public List<SearchResult> conjuntiveCrawling (String[] searchedTerms, int resultSize) {
@@ -253,8 +261,6 @@ public class DBConnection {
         }
         return foundItems;
     }
-
-
 
     public List<SearchResult> disjunctiveCrawling(String[] searchedTerms, int resultSize) {
         List<SearchResult> foundItems = new ArrayList<>();
