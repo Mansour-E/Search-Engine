@@ -137,6 +137,7 @@ public class DBConnection {
 
     // Queries For Exercise 2
     // TODO: You don’t need initializeSchema; add the columns to the features table when it is created.
+    // In the feature table we need only one column (score or tfidf). the tf, idf columns are not needed. You can use WITH statement or create a java class to make the calculation
     // Please modify the comments and the System.out output to English.
     // In the Indexer file, make sure to calculate the score after all terms of a document are inserted, not after each document is added (recompute).
     // create Other branch EX2 :p
