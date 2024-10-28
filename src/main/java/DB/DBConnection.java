@@ -72,22 +72,20 @@ public class DBConnection {
     }
 
     public void calculateIDF() {
-        // Abfrage für die Gesamtzahl der Dokumente
-        String totalDocsQuery = "SELECT COUNT(*) AS total_documents FROM documents";
-
-        // Abfrage zum Aktualisieren des IDF-Werts für jeden Term
         String updateIDFQuery = """
-            UPDATE features
-            SET idf = LOG((SELECT COUNT(*) FROM documents) / (SELECT COUNT(DISTINCT docid) FROM features WHERE term = features.term))
-        """;
+        UPDATE features
+        SET idf = LOG(? / (SELECT COUNT(DISTINCT docid) FROM features WHERE term = features.term))
+    """;
 
-        try (Statement stmt = connection.createStatement()) {
-            // Total Documents Anzahl
-            ResultSet rs = stmt.executeQuery(totalDocsQuery);
-            int totalDocuments = rs.next() ? rs.getInt("total_documents") : 1; // Vermeidung von Division durch Null
+        try (PreparedStatement stmt = connection.prepareStatement(updateIDFQuery);
+             Statement totalDocsStmt = connection.createStatement()) {
 
-            // Aktualisierung der IDF-Werte
-            stmt.executeUpdate(updateIDFQuery.replace("COUNT(*) FROM documents", String.valueOf(totalDocuments)));
+            // Berechne die Gesamtzahl der Dokumente
+            ResultSet rs = totalDocsStmt.executeQuery("SELECT COUNT(*) AS total_documents FROM documents");
+            int totalDocuments = rs.next() ? rs.getInt("total_documents") : 1; // Vermeide Division durch Null
+
+            stmt.setInt(1, totalDocuments);
+            stmt.executeUpdate();
             System.out.println("IDF-Werte berechnet und aktualisiert.");
         } catch (SQLException e) {
             System.err.println("Fehler bei der Berechnung des IDF-Werts: " + e.getMessage());
