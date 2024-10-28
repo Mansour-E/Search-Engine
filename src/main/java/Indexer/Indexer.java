@@ -54,10 +54,12 @@ public class Indexer {
             db.insertFeature(rootDocID, term, frequency);
         }
 
+        // TODO calculate the Score for each item
+        // TODO we can use Threds to calculate the The score and seperatley add the links into the table
+
         // Insert links into documents and links tables
         for (String link : parsedLinks) {
             int docId = db.insertDocument(link, createdDate);
-
             db.insertLink(rootDocID, docId);
             linkAndDocIdElements.put(docId, link);
         }
