@@ -15,6 +15,22 @@ public class DBConnection {
     public DBConnection(String dbName, String dbOwner, String dbPassword) {
         this.connection = this.connectToDb(dbName, dbOwner, dbPassword);
         createTables();
+        initializeSchema();
+    }
+    // Queries for Exercise 2
+    private void initializeSchema() {
+        try (Statement stmt = connection.createStatement()) {
+            // Add new columns with default values if they don't already exist
+            stmt.executeUpdate("ALTER TABLE features ADD COLUMN IF NOT EXISTS tf REAL DEFAULT 0");
+            stmt.executeUpdate("ALTER TABLE features ADD COLUMN IF NOT EXISTS idf REAL DEFAULT 0");
+            stmt.executeUpdate("ALTER TABLE features ADD COLUMN IF NOT EXISTS tfidf REAL DEFAULT 0");
+
+            // Create index on term for efficient TF*IDF calculations
+            stmt.executeUpdate("CREATE INDEX IF NOT EXISTS idx_term_features ON features (term)");
+        } catch (Exception e) {
+            System.err.println("Error initializing database schema: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 
     // Queries For Exercise 1
@@ -34,6 +50,68 @@ public class DBConnection {
             System.out.println(e);
         }
         return connection;
+    }
+
+    //zum 2te Aufgabe
+    public void calculateTF() {
+        String updateTFQuery = """
+            UPDATE features
+            SET tf = CASE
+                WHEN term_frequency > 0 THEN 1 + LOG(term_frequency)
+                ELSE 0
+            END
+        """;
+
+        try (Statement stmt = connection.createStatement()) {
+            stmt.executeUpdate(updateTFQuery);
+            System.out.println("TF-Werte berechnet und aktualisiert.");
+        } catch (SQLException e) {
+            System.err.println("Fehler bei der Berechnung des TF-Werts: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    public void calculateIDF() {
+        String updateIDFQuery = """
+        UPDATE features
+        SET idf = LOG(? / (SELECT COUNT(DISTINCT docid) FROM features WHERE term = features.term))
+    """;
+
+        try (PreparedStatement stmt = connection.prepareStatement(updateIDFQuery);
+             Statement totalDocsStmt = connection.createStatement()) {
+
+            // Berechne die Gesamtzahl der Dokumente
+            ResultSet rs = totalDocsStmt.executeQuery("SELECT COUNT(*) AS total_documents FROM documents");
+            int totalDocuments = rs.next() ? rs.getInt("total_documents") : 1; // Vermeide Division durch Null
+
+            stmt.setInt(1, totalDocuments);
+            stmt.executeUpdate();
+            System.out.println("IDF-Werte berechnet und aktualisiert.");
+        } catch (SQLException e) {
+            System.err.println("Fehler bei der Berechnung des IDF-Werts: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    public void calculateTFIDF() {
+        String updateTFIDFQuery = """
+        UPDATE features
+        SET tfidf = tf * idf
+    """;
+
+        try (Statement stmt = connection.createStatement()) {
+            stmt.executeUpdate(updateTFIDFQuery);
+            System.out.println("TF*IDF-Werte berechnet und aktualisiert.");
+        } catch (SQLException e) {
+            System.err.println("Fehler bei der Berechnung des TF*IDF-Werts: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+    public void reCompute() {
+        // Berechne TF, IDF und TF*IDF neu
+        calculateTF();       // Berechne Term Frequency
+        calculateIDF();      // Berechne Inverse Document Frequency
+        calculateTFIDF();    // Berechne TF*IDF
     }
 
     public void createDocumentsTable() {
@@ -99,6 +177,7 @@ public class DBConnection {
             if (resultSet.next()) {
                 int docid = resultSet.getInt("docid");
                 // System.out.println("Document " + docid + " is inserted");
+                reCompute(); // Aktualisiere TF, IDF und TF*IDF nach dem Hinzufügen eines neuen Dokuments
                 return docid;
             }
         } catch (SQLException e) {
