@@ -16,11 +16,14 @@ public class Main {
 
 
         // THIS PART BELONGS TO EXERCISE  1 + 2
+        //
 
         DBConnection db = new DBConnection("IS-Project", "postgres", "Yessin.10");
 
-        Crawler crawler = new Crawler( db, "https://en.wikipedia.org/wiki/Parnassia_palustris", 3, 3, true );
-        crawler.crawl();
+        //Crawler crawler = new Crawler( db, "https://www.cs.rptu.de/en/studium/studiengaenge/bm-inf/sp.ma/", 2, 3, false );
+        // crawler.crawl();
+        String[] test = new String[]{"student", "study"};
+        executeSearch(db, test,false, 9 );
 
         // THIS PART BELONGS TO EXERCISE  3
         /*
