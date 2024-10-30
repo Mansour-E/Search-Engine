@@ -1,10 +1,101 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>index</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web-Suchmaschine</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 50px;
+        }
+        #search-form {
+            margin-bottom: 20px;
+        }
+        .results {
+            list-style: none;
+            padding: 0;
+        }
+        .result-item {
+            padding: 10px;
+            border-bottom: 1px solid #ccc;
+        }
+    </style>
 </head>
 <body>
-<h1>HOME PAGE</h1>
+<h1>Google</h1>
+<form id="search-form" action="/search" method="get" onsubmit="return processQuery()">
+
+    <div class="searchResultContainer">
+        <ul id="searchResult"></ul>
+        <input id="searchQuery" name="query" type="text" placeholder="" value="">
+    </div>
+
+    <div class="siteResultContainer">
+        <ul id="siteResult"></ul>
+        <input id="siteQuery" name="query" type="text" placeholder="" value="">
+    </div>
+    <button type="submit">Suchen</button>
+
+</form>
+
+<script>
+
+  const searchTerms = [];
+  const searchSites = [];
+  const inputSearchField = document.getElementById('searchQuery');
+  const inputSiteField = document.getElementById('siteQuery');
+  const searchResult =  document.getElementById('searchResult');
+  const siteResult =  document.getElementById('siteResult');
+
+
+  inputSearchField.addEventListener('keydown', (e) => {
+      if (e.key === ' ' || e.key === 'Enter') {
+          e.preventDefault();
+          let input = e.target.value.trim();
+          if (input) {
+              searchTerms.push(input);
+              e.target.value = '';
+              const liTag = document.createElement("li");
+              const textnode = document.createTextNode(input);
+              liTag.appendChild(textnode);
+              searchResult.appendChild(liTag);
+              console.log('Current search terms:', searchTerms);
+
+          }
+      }
+  });
+
+  inputSiteField.addEventListener('keydown', (e) => {
+      if (e.key === ' ' || e.key === 'Enter') {
+          e.preventDefault();
+          let input = e.target.value.trim();
+          if (input) {
+              searchSites.push(input);
+              e.target.value = '';
+              const liTag = document.createElement("li");
+              const textnode = document.createTextNode(input);
+              liTag.appendChild(textnode);
+              siteResult.appendChild(liTag);
+              console.log('Current search terms:', searchSites);
+
+          }
+      }
+  });
+
+
+
+  function displayResults(results) {
+      const resultsList = document.getElementById('results');
+      resultsList.innerHTML = "";
+      results.forEach(result => {
+          const item = document.createElement('li');
+          item.classList.add('result-item');
+          item.innerHTML = `<strong>Rang:</strong> ${result.rank}, <a href="${result.url}">${result.url}</a> - <strong>Score:</strong> ${result.score}`;
+          resultsList.appendChild(item);
+      });
+  }
+</script>
 </body>
 </html>

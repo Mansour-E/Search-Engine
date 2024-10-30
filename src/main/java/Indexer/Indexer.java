@@ -52,7 +52,7 @@ public class Indexer {
             String term = entry.getKey();
             //"Select count(DISTINCT id) from feature f where f.term = ?"
             int frequency = entry.getValue();
-            db.insertFeature(rootDocID, term, frequency );//?
+            db.insertFeature(rootDocID, term, frequency );
         }
 
         // TODO calculate the Score for each item

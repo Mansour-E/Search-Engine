@@ -60,6 +60,7 @@ public class DBConnection {
                     "\tdocid INT REFERENCES documents(docid),\n" +
                     "\tterm TEXT NOT NULL,\n" +
                     "\tterm_frequency INT NOT NULL\n" +
+                    "\tfrequency_score INT NOT NULL\n" +
                     ");";
             statement = connection.createStatement();
             statement.executeUpdate(query);
