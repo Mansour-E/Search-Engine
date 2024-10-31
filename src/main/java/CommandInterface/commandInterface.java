@@ -1,7 +1,7 @@
 package CommandInterface;
 
 import DB.DBConnection;
-import java.util.ArrayList;
+
 import java.util.List;
 
 /*
@@ -13,7 +13,7 @@ import java.util.List;
 public class commandInterface {
 
 
-    public static void executeSearch (DBConnection db, String[] searchTerms, boolean isConjuctive, int resultSize ) {
+    public static List<SearchResult> executeSearch (DBConnection db, String[] searchTerms, boolean isConjuctive, int resultSize ) {
         List<SearchResult> foundItems;
         if(isConjuctive) {
             foundItems = db.conjuntiveCrawling (searchTerms,resultSize);
@@ -30,6 +30,7 @@ public class commandInterface {
             System.out.println("rank " + (i+1) + ": " + foundItem.getUrl() + " (Score: " + foundItem.getScore() + ")");
         }
 
+        return foundItems;
     }
 
 }
