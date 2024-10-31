@@ -1,101 +1,126 @@
 <!DOCTYPE html>
-<html lang="de">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web-Suchmaschine</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-            padding: 50px;
-        }
-        #search-form {
-            margin-bottom: 20px;
-        }
-        .results {
-            list-style: none;
-            padding: 0;
-        }
-        .result-item {
-            padding: 10px;
-            border-bottom: 1px solid #ccc;
-        }
-    </style>
-</head>
-<body>
-<h1>Google</h1>
-<form id="search-form" action="/search" method="get" onsubmit="return processQuery()">
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Web-Suchmaschine</title>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                text-align: center;
+                padding: 50px;
+            }
+            #search-form {
+                margin-bottom: 20px;
+            }
+            .results {
+                list-style: none;
+                padding: 0;
+            }
+            .result-item {
+                padding: 10px;
+                border-bottom: 1px solid #ccc;
+            }
+        </style>
+    </head>
+    <body>
 
-    <div class="searchResultContainer">
-        <ul id="searchResult"></ul>
-        <input id="searchQuery" name="query" type="text" placeholder="" value="">
-    </div>
+    <!--
+    can you please add ajax and jquery packages to the project
+    and then try to send a request with executeSearch function defined in the <script> tag
+    go to SearchServlet and check if the sout is printed in the console
+    if ok , delete this msg
 
-    <div class="siteResultContainer">
-        <ul id="siteResult"></ul>
-        <input id="siteQuery" name="query" type="text" placeholder="" value="">
-    </div>
-    <button type="submit">Suchen</button>
+    -->
+        <h1>Google</h1>
+        <form id="searchForm"  onsubmit="(event) => executeSearch(event)">
 
-</form>
+            <div class="searchResultContainer">
+                <ul id="searchResult"></ul>
+                <input id="searchQuery" name="query" type="text" placeholder="" value="">
+            </div>
 
-<script>
+            <div class="siteResultContainer">
+                <ul id="siteResult"></ul>
+                <input id="siteQuery" name="query" type="text" placeholder="" value="">
+            </div>
+            <button type="submit">Suchen</button>
+        </form>
+    </body>
+    <script>
 
-  const searchTerms = [];
-  const searchSites = [];
-  const inputSearchField = document.getElementById('searchQuery');
-  const inputSiteField = document.getElementById('siteQuery');
-  const searchResult =  document.getElementById('searchResult');
-  const siteResult =  document.getElementById('siteResult');
+      const searchTerms = [];
+      const searchSites = [];
+      const inputSearchField = document.getElementById('searchQuery');
+      const inputSiteField = document.getElementById('siteQuery');
+      const searchResult =  document.getElementById('searchResult');
+      const siteResult =  document.getElementById('siteResult');
 
 
-  inputSearchField.addEventListener('keydown', (e) => {
-      if (e.key === ' ' || e.key === 'Enter') {
-          e.preventDefault();
-          let input = e.target.value.trim();
-          if (input) {
-              searchTerms.push(input);
-              e.target.value = '';
-              const liTag = document.createElement("li");
-              const textnode = document.createTextNode(input);
-              liTag.appendChild(textnode);
-              searchResult.appendChild(liTag);
-              console.log('Current search terms:', searchTerms);
+      inputSearchField.addEventListener('keydown', (e) => {
+          if (e.key === ' ' || e.key === 'Enter') {
+              e.preventDefault();
+              let input = e.target.value.trim();
+              if (input) {
+                  searchTerms.push(input);
+                  e.target.value = '';
+                  const liTag = document.createElement("li");
+                  const textnode = document.createTextNode(input);
+                  liTag.appendChild(textnode);
+                  searchResult.appendChild(liTag);
+                  console.log('Current search terms:', searchTerms);
 
+              }
           }
-      }
-  });
-
-  inputSiteField.addEventListener('keydown', (e) => {
-      if (e.key === ' ' || e.key === 'Enter') {
-          e.preventDefault();
-          let input = e.target.value.trim();
-          if (input) {
-              searchSites.push(input);
-              e.target.value = '';
-              const liTag = document.createElement("li");
-              const textnode = document.createTextNode(input);
-              liTag.appendChild(textnode);
-              siteResult.appendChild(liTag);
-              console.log('Current search terms:', searchSites);
-
-          }
-      }
-  });
-
-
-
-  function displayResults(results) {
-      const resultsList = document.getElementById('results');
-      resultsList.innerHTML = "";
-      results.forEach(result => {
-          const item = document.createElement('li');
-          item.classList.add('result-item');
-          item.innerHTML = `<strong>Rang:</strong> ${result.rank}, <a href="${result.url}">${result.url}</a> - <strong>Score:</strong> ${result.score}`;
-          resultsList.appendChild(item);
       });
-  }
-</script>
-</body>
+
+      inputSiteField.addEventListener('keydown', (e) => {
+          if (e.key === ' ' || e.key === 'Enter') {
+              e.preventDefault();
+              let input = e.target.value.trim();
+              if (input) {
+                  searchSites.push(input);
+                  e.target.value = '';
+                  const liTag = document.createElement("li");
+                  const textnode = document.createTextNode(input);
+                  liTag.appendChild(textnode);
+                  siteResult.appendChild(liTag);
+                  console.log('Current search terms:', searchSites);
+
+              }
+          }
+      });
+
+      function executeSearch(event) {
+      console.log("hi")
+        event.preventDefault();
+
+            const k = 20;
+            const queryObject = {
+                searchTerms: searchTerms,
+                domainSiteTerms: searchSites,
+                isConjunctive: false
+            };
+
+            const queryString = encodeURIComponent(JSON.stringify(queryObject));
+
+            try {
+                const response = fetch(`/search?query=${queryString}&k=${k}`, {
+                    method: 'POST',
+                });
+                 // const responseText = await response.text();
+                 console.log('Response status:', response.status);
+                 console.log('Response text:', responseText)
+                    if (!response.ok) {
+                    throw new Error(`Server error: ${response.status}`);
+                }
+                // const data = await response.json();
+                // displayResults(data.resultList);
+            } catch (error) {
+                console.error('Fetch error:', error);
+            }
+      }
+
+
+    </script>
 </html>

@@ -1,27 +1,29 @@
-package controller;
+package Servlet;
 
-import javax.servlet.ServletException;
-import javax.servlet.annotation.WebServlet;
-import javax.servlet.http.HttpServlet;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.sql.*;
-import java.util.ArrayList;
-import java.util.List;
+
 import org.json.JSONObject;
 import org.json.JSONArray;
 
 @WebServlet("/search")
 public class SearchServlet extends HttpServlet {
 
-    private static final String DB_URL = "jdbc:postgresql://localhost:5432/yourdatabase";
-    private static final String DB_USER = "yourusername";
-    private static final String DB_PASSWORD = "yourpassword";
-
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+
+        String query = request.getParameter("query");
+        System.out.printf("query" + query);
+
+        response.sendRedirect("index.html");
+
+        /*
         String query = request.getParameter("query");
         int k = Integer.parseInt(request.getParameter("k"));
         boolean isConjunctive = Boolean.parseBoolean(request.getParameter("conjunctive"));
@@ -39,6 +41,7 @@ public class SearchServlet extends HttpServlet {
         } catch (Exception e) {
             response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Error processing search query: " + e.getMessage());
         }
+         */
     }
 
     private JSONObject executeSearch(String query, int k, boolean isConjunctive) throws SQLException {
