@@ -6,12 +6,12 @@
          version="3.0">
 
     <servlet>
-        <servlet-name>SearchServlet</servlet-name>
-        <servlet-class>controller.SearchServlet</servlet-class>
+        <servlet-name>SimpleServlet</servlet-name>
+        <servlet-class>CommandInterface.SimpleServlet</servlet-class>
     </servlet>
 
     <servlet-mapping>
-        <servlet-name>SearchServlet</servlet-name>
+        <servlet-name>SimpleServlet</servlet-name>
         <url-pattern>/search</url-pattern>
     </servlet-mapping>
 

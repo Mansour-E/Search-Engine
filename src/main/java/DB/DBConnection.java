@@ -302,6 +302,17 @@ public class DBConnection {
         return foundItems;
     }
 
+    public void close() {
+        try {
+            if (connection != null && !connection.isClosed()) {
+                connection.close();
+            }
+        } catch (SQLException e) {
+            System.err.println("Error closing the connection: " + e.getMessage());
+        }
+    }
+
+
 }
 
 
