@@ -1,0 +1,16 @@
+body {
+    font-family: Arial, sans-serif;
+    text-align: center;
+    padding: 50px;
+}
+#search-form {
+    margin-bottom: 20px;
+}
+.results {
+    list-style: none;
+    padding: 0;
+}
+.result-item {
+    padding: 10px;
+    border-bottom: 1px solid #ccc;
+}
