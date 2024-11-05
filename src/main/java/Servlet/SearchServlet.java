@@ -10,7 +10,9 @@ import jakarta.servlet.http.HttpServletResponse;
 
 import java.io.IOException;
 import java.sql.*;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.json.JSONObject;
 import org.json.JSONArray;
@@ -61,8 +63,8 @@ public class SearchServlet extends HttpServlet {
         boolean isConjuctive;
         String[] searchTerms;
         String searchTermsAsString = "";
+        Set<String> allowedDomainsAndSites = new HashSet<>();
         List<SearchResult> foundItems;
-
         JSONObject resultJson = new JSONObject();
 
         JSONArray jsonSearchTerms = jsonQuery.getJSONArray("searchTerms");
@@ -70,12 +72,15 @@ public class SearchServlet extends HttpServlet {
         for (int i = 0; i < jsonSearchTerms.length(); i++) {
             String term = jsonSearchTerms.getString(i);
             searchTerms[i] = term ;
-            searchTermsAsString += (" " + term);
+            searchTermsAsString += (term + " ");
+        }
+
+        JSONArray jsonSiteDomainTerms = jsonQuery.getJSONArray("domainSiteTerms");
+        for (int i = 0; i < jsonSiteDomainTerms.length(); i++) {
+            allowedDomainsAndSites.add(jsonSiteDomainTerms.getString(i));
         }
 
         isConjuctive = jsonQuery.getBoolean("isConjunctive");
-
-        // System.out.println("Domain Site Terms: " + jsonQuery.getJSONArray("domainSiteTerms"));
 
         if (isConjuctive) {
             foundItems = db.conjuntiveCrawling(searchTerms, resultSize);
@@ -83,22 +88,39 @@ public class SearchServlet extends HttpServlet {
             foundItems = db.disjunctiveCrawling(searchTerms, resultSize);
         }
 
-        System.out.printf("foundItems" + foundItems);
-
         if(foundItems.isEmpty()) {
             System.out.println("there are noterms that match these words");
         }
 
-        // create ResultList Project
+        System.out.printf("allowedDomainsAndSites " + allowedDomainsAndSites);
+        // create ResultList Object
         JSONArray resultList = new JSONArray();
         for (int i = 0; i < foundItems.size(); i++) {
             SearchResult foundItem = foundItems.get(i);
-            JSONObject foundItemObject = new JSONObject();
-            foundItemObject.put("rank", (i+1));
-            foundItemObject.put("url", foundItem.getUrl());
-            foundItemObject.put("score",  foundItem.getScore());
-            resultList.put(foundItemObject);
-            System.out.println("rank " + (i+1) + ": " + foundItem.getUrl() + " (Score: " + foundItem.getScore() + ")");
+            String itemUrl = foundItem.getUrl();
+            boolean shouldAddItem = allowedDomainsAndSites.isEmpty();
+
+            // Check if item URL is allowed
+            if (!shouldAddItem) {
+                for (String allowedDomain : allowedDomainsAndSites) {
+                    System.out.printf("allowedDomain " +allowedDomain);
+
+                    if (itemUrl.contains(allowedDomain)) {
+                        shouldAddItem = true;
+                        break;
+                    }
+                }
+            }
+
+            // If allowed, add item to result list
+            if (shouldAddItem) {
+                JSONObject foundItemObject = new JSONObject();
+                foundItemObject.put("rank", i + 1);
+                foundItemObject.put("url", itemUrl);
+                foundItemObject.put("score", foundItem.getScore());
+                resultList.put(foundItemObject);
+                // System.out.println("rank " + (i + 1) + ": " + itemUrl + " (Score: " + foundItem.getScore() + ")");
+            }
         }
         resultJson.put("resultList", resultList);
 
