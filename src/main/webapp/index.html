@@ -1,124 +1,38 @@
 <!DOCTYPE html>
 <html>
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Web-Suchmaschine</title>
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.3.1/dist/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
-        <link rel="stylesheet" href="./css/index.css">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.3.1/dist/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <link rel="stylesheet" href="css/index.css">
+    <title>Web-Suchmaschine</title>
+</head>
+<body>
+<div class="searchFormContainer">
+    <h1 class="text-center">Google</h1>
+    <form id="searchForm">
+        <div class="form-group">
+            <label for="searchQuery">Search Terms</label>
+            <input type="text" class="form-control" id="searchQuery" placeholder="Enter search keywords">
+            <ul id="searchResult" class="form-text text-muted d-inline-flex list-inline"></ul>
+        </div>
+        <div class="form-group">
+            <label for="siteQuery">Site or Domain</label>
+            <input type="text" class="form-control" id="siteQuery" placeholder="Enter site or domain for search">
+            <ul id="siteResult" class="form-text text-muted d-inline-flex list-inline"></ul>
+        </div>
+        <div class="form-group form-check">
+            <input type="checkbox" class="form-check-input" id="conjunctiveCheck">
+            <label class="form-check-label" for="conjunctiveCheck">Require results to include all search terms</label>
+        </div>
+        <button type="submit" class="btn btn-primary">Submit</button>
+    </form>
+</div>
 
-    </head>
-    <body>
-
-    <!--
-    can you please add ajax and jquery packages to the project
-    and then try to send a request with executeSearch function defined in the <script> tag
-    go to SearchServlet and check if the sout is printed in the console
-    if ok , delete this msg
-
-    -->
-        <h1>Google</h1>
-        <form id="searchForm"  onsubmit="(event) => executeSearch(event)">
-
-            <div class="searchResultContainer">
-                <ul id="searchResult"></ul>
-                <input id="searchQuery" name="query" type="text" placeholder="" value="">
-            </div>
-
-            <div class="siteResultContainer">
-                <ul id="siteResult"></ul>
-                <input id="siteQuery" name="query" type="text" placeholder="" value="">
-            </div>
-            <button type="submit">Suchen</button>
-        </form>
-<<<<<<< Updated upstream
-=======
-
-
-         <!-- import Jquery -->
-        <script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
-        <!-- import Boostrap -->
-        <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
-        <script src="https://cdn.jsdelivr.net/npm/popper.js@1.14.7/dist/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
-        <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.3.1/dist/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
-        <!-- import FIle -->
-        <script src="./js/index.js"></script>
->>>>>>> Stashed changes
-    </body>
-    <script>
-
-      const searchTerms = [];
-      const searchSites = [];
-      const inputSearchField = document.getElementById('searchQuery');
-      const inputSiteField = document.getElementById('siteQuery');
-      const searchResult =  document.getElementById('searchResult');
-      const siteResult =  document.getElementById('siteResult');
-
-
-      inputSearchField.addEventListener('keydown', (e) => {
-          if (e.key === ' ' || e.key === 'Enter') {
-              e.preventDefault();
-              let input = e.target.value.trim();
-              if (input) {
-                  searchTerms.push(input);
-                  e.target.value = '';
-                  const liTag = document.createElement("li");
-                  const textnode = document.createTextNode(input);
-                  liTag.appendChild(textnode);
-                  searchResult.appendChild(liTag);
-                  console.log('Current search terms:', searchTerms);
-
-              }
-          }
-      });
-
-      inputSiteField.addEventListener('keydown', (e) => {
-          if (e.key === ' ' || e.key === 'Enter') {
-              e.preventDefault();
-              let input = e.target.value.trim();
-              if (input) {
-                  searchSites.push(input);
-                  e.target.value = '';
-                  const liTag = document.createElement("li");
-                  const textnode = document.createTextNode(input);
-                  liTag.appendChild(textnode);
-                  siteResult.appendChild(liTag);
-                  console.log('Current search terms:', searchSites);
-
-              }
-          }
-      });
-
-      function executeSearch(event) {
-      console.log("hi")
-        event.preventDefault();
-
-            const k = 20;
-            const queryObject = {
-                searchTerms: searchTerms,
-                domainSiteTerms: searchSites,
-                isConjunctive: false
-            };
-
-            const queryString = encodeURIComponent(JSON.stringify(queryObject));
-
-            try {
-                const response = fetch(`/search?query=${queryString}&k=${k}`, {
-                    method: 'POST',
-                });
-                 // const responseText = await response.text();
-                 console.log('Response status:', response.status);
-                 console.log('Response text:', responseText)
-                    if (!response.ok) {
-                    throw new Error(`Server error: ${response.status}`);
-                }
-                // const data = await response.json();
-                // displayResults(data.resultList);
-            } catch (error) {
-                console.error('Fetch error:', error);
-            }
-      }
-
-
-    </script>
+<script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/popper.js@1.14.7/dist/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.3.1/dist/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
+<script src="./js/index.js"></script>
+</body>
 </html>
+

@@ -21,7 +21,7 @@ public class SearchServlet extends HttpServlet {
         String query = request.getParameter("query");
         System.out.printf("query" + query);
 
-        response.sendRedirect("index.html");
+        // response.sendRedirect("index.html");
 
         /*
         String query = request.getParameter("query");
@@ -44,6 +44,7 @@ public class SearchServlet extends HttpServlet {
          */
     }
 
+    /*
     private JSONObject executeSearch(String query, int k, boolean isConjunctive) throws SQLException {
         JSONObject resultJson = new JSONObject();
         JSONArray resultList = new JSONArray();
@@ -129,4 +130,7 @@ public class SearchServlet extends HttpServlet {
 
         return totalTerms;
     }
+     */
 }
+
+
