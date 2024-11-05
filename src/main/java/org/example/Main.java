@@ -18,9 +18,9 @@ public class Main {
         // THIS PART BELONGS TO EXERCISE  1 + 2
         //
 
-        DBConnection db = new DBConnection("IS-Project", "postgres", "Yessin.10");
+        DBConnection db = new DBConnection("IS-Project", "postgres", "Yessin.10", true);
 
-        //Crawler crawler = new Crawler( db, "https://www.cs.rptu.de/en/studium/studiengaenge/bm-inf/sp.ma/", 2, 3, false );
+        // Crawler crawler = new Crawler( db, "https://www.cs.rptu.de/en/studium/studiengaenge/bm-inf/sp.ma/", 2, 3, false );
         // crawler.crawl();
         String[] test = new String[]{"student", "study"};
         executeSearch(db, test,false, 9 );

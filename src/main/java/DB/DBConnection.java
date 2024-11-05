@@ -12,10 +12,13 @@ public class DBConnection {
 
     private Connection connection ;
 
-    public DBConnection(String dbName, String dbOwner, String dbPassword) {
+    public DBConnection(String dbName, String dbOwner, String dbPassword, Boolean init ) {
         this.connection = this.connectToDb(dbName, dbOwner, dbPassword);
-        createTables();
-        initializeSchema();
+        if(init) {
+            createTables();
+            initializeSchema();
+        }
+
     }
 
     // Queries For Exercise 1
@@ -60,7 +63,6 @@ public class DBConnection {
                     "\tdocid INT REFERENCES documents(docid),\n" +
                     "\tterm TEXT NOT NULL,\n" +
                     "\tterm_frequency INT NOT NULL\n" +
-                    "\tfrequency_score INT NOT NULL\n" +
                     ");";
             statement = connection.createStatement();
             statement.executeUpdate(query);
@@ -136,12 +138,6 @@ public class DBConnection {
         }
     }
 
-    // Queries For Exercise 2
-    // TODO: You don’t need initializeSchema; add the columns to the features table when it is created.
-    // In the feature table we need only one column (score or tfidf). the tf, idf columns are not needed. You can use WITH statement or create a java class to make the calculation
-    // Please modify the comments and the System.out output to English.
-    // In the Indexer file, make sure to calculate the score after all terms of a document are inserted, not after each document is added (recompute).
-    // create Other branch EX2 :p
 
 
     // Queries for Exercise 2
@@ -225,6 +221,10 @@ public class DBConnection {
 
     // Queries For Exercise 3
     public List<SearchResult> conjuntiveCrawling (String[] searchedTerms, int resultSize) {
+        for (int i = 0; i < searchedTerms.length; i++) {
+            System.out.printf("test+ " + searchedTerms[i]);
+        }
+
         int searchedTermsCount = searchedTerms.length;
         List<SearchResult> foundItems = new ArrayList<>();
         List<String> stemmedSearchedTerms = Arrays.stream(searchedTerms)

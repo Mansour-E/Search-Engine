@@ -4,12 +4,7 @@ import DB.DBConnection;
 
 import java.util.List;
 
-/*
-//*  from input console:
-    connection with DB , take DBName, DBOwner, DBPassword
-    take the terms search and if the query should be conjuctive/disjunctive
-    display the result (top5, rank, url, achieved score)
-*/
+
 public class commandInterface {
 
 
@@ -22,7 +17,7 @@ public class commandInterface {
         }
 
 
-        if(foundItems.size() == 0) {
+        if(foundItems.isEmpty()) {
             System.out.println("there are noterms that match these words");
         }
         for (int i = 0; i < foundItems.size(); i++) {
