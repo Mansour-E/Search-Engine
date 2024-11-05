@@ -231,11 +231,10 @@ public class DBConnection {
                 .map(term -> stemWord(term))
                 .collect(Collectors.toList());
 
-        // TODO change SUM(term_frequency) with SUM(frequency_score) * 2 !!!!
         String insertedSearchedTerms = String.join(",", Collections.nCopies(searchedTermsCount, "?"));
         String conjunctiveQuery = "SELECT d.docid, d.url, f.score as score FROM documents as d\n" +
                 "jOIN (" +
-                "SELECT docid , SUM(term_frequency) as score FROM features WHERE term IN (" + insertedSearchedTerms + ")\n" +
+                "SELECT docid , SUM(tf) as score FROM features WHERE term IN (" + insertedSearchedTerms + ")\n" +
                 "GROUP BY docid HAVING COUNT(DISTINCT term) = ? \n" +
                 "LIMIT ? ) as f\n" +
                 "ON d.docid = f.docid ORDER BY score DESC";
@@ -271,13 +270,12 @@ public class DBConnection {
                 .map(term -> stemWord(term))
                 .collect(Collectors.toList());
 
-        // TODO change SUM(term_frequency) with SUM(frequency_score)
         String insertedSearchedTerms = String.join(",", Collections.nCopies(searchedTermsCount, "?"));
         String disjunctiveQuery = "SELECT d.docid, d.url, f.score as score FROM documents as d\n" +
                 "jOIN (" +
-                    "SELECT docid , SUM(term_frequency) as score FROM features WHERE term IN (" + insertedSearchedTerms + ")\n" +
+                    "SELECT docid , SUM(tf) as score FROM features WHERE term IN (" + insertedSearchedTerms + ")\n" +
                     "GROUP BY docid \n" +
-                    "ORDER BY SUM(term_frequency) DESC\n" +
+                    "ORDER BY SUM(tf) DESC\n" +
                     "LIMIT ? ) as f\n" +
                 "ON d.docid = f.docid ORDER BY score DESC";
 
