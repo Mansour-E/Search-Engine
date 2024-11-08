@@ -1,5 +1,6 @@
 package DB;
 import CommandInterface.SearchResult;
+import Crawler.Crawler.URLDepthPair;
 
 import java.sql.*;
 import java.util.*;
@@ -87,10 +88,28 @@ public class DBConnection {
         }
     }
 
+    public void crawledPagesQueueTable() {
+        Statement statement;
+        try {
+            String query = "CREATE TABLE IF NOT EXISTS crawledPagesQueueTable (\n" +
+                    "\tid SERIAL PRIMARY KEY,\n" +
+                    "\turl TEXT NOT NULL,\n" +
+                    "\tdepth INT NOT NULL,\n" +
+                    "\tstate INT NOT NULL \n" +
+                    ");";
+            statement = connection.createStatement();
+            statement.executeUpdate(query);
+            System.out.println("Features Table is created");
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     public void createTables() {
         this.createDocumentsTable();
         this.createFeaturesTable();
         this.createLinksTable();
+        this.crawledPagesQueueTable();
     }
 
     public int insertDocument(String url, String crawledDate) {
@@ -135,6 +154,46 @@ public class DBConnection {
             preparedStatement.executeUpdate();
         } catch (SQLException e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    public List<URLDepthPair> getQueuedUrls() {
+        List<URLDepthPair> queuedUrls = new ArrayList<>();
+        String query = "SELECT id, url, depth FROM crawledPagesQueueTable WHERE state = 0 ORDER BY depth ASC";
+        try (Statement stmt = connection.createStatement();
+             ResultSet rs = stmt.executeQuery(query)) {
+            while (rs.next()) {
+                int id = rs.getInt("id");
+                String url = rs.getString("url");
+                int depth = rs.getInt("depth");
+                queuedUrls.add(new URLDepthPair(id, url, depth));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return queuedUrls;
+    }
+
+    public void updateCrawledPageState(String url, int state) {
+        String query = "UPDATE crawledPagesQueueTable SET state = ? WHERE url = ?";
+        try (PreparedStatement ps = connection.prepareStatement(query)) {
+            ps.setInt(1, state);
+            ps.setString(2, url);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void insertIntoCrawledPagesQueue(String url, int depth, int state) {
+        String query = "INSERT INTO crawledPagesQueueTable (url, depth, state) VALUES (?, ?, ?)";
+        try (PreparedStatement ps = connection.prepareStatement(query)) {
+            ps.setString(1, url);
+            ps.setInt(2, depth);
+            ps.setInt(3, state);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
         }
     }
 

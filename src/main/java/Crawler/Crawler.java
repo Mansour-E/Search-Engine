@@ -16,7 +16,6 @@ import java.util.regex.Pattern;
 
 public class Crawler {
     DBConnection db;
-    String rootUrl;
     int depthToCrawl;
     int nbrToCrawl;
     Boolean allowToLeaveDomains;
@@ -27,28 +26,39 @@ public class Crawler {
     Set<String> visitedPages = new HashSet<>();
     ExecutorService threadPool;
 
-    public Crawler(DBConnection db, String rootUrl , int depthToCrawl, int nbrToCrawl, Boolean allowToLeaveDomains) {
+    public Crawler(DBConnection db, String[] rootUrls , int depthToCrawl, int nbrToCrawl, Boolean allowToLeaveDomains) {
         this.db = db;
-        this.rootUrl = rootUrl;
         this.depthToCrawl = depthToCrawl;
         this.nbrToCrawl = nbrToCrawl;
         this.allowToLeaveDomains = allowToLeaveDomains;
         this.threadPool = Executors.newFixedThreadPool(10);
 
-        // docId =  = -1 means that the Url does not have any id
-        urlQueue.add(new URLDepthPair(-1, rootUrl, 0));
+        // Load existing state from the database if the crawler was interrupted
+        loadNotVisitedURL();
+
+        // If the system was not interrupted, initialize the queue with root URLs
+        if (urlQueue.isEmpty()) {
+            for (String rootUrl : rootUrls) {
+                urlQueue.add(new URLDepthPair(-1, rootUrl, 0));
+                db.insertIntoCrawledPagesQueue(rootUrl, 0, 0);  // Initial state set to 0 (not visited)
+            }
+        }
+
     }
 
+    private void loadNotVisitedURL () {
+        List<URLDepthPair> queuedUrls = db.getQueuedUrls();
+        urlQueue.addAll(queuedUrls);
+    }
 
     public void crawl() throws IOException {
         while (!urlQueue.isEmpty() && crawledUrlCount < nbrToCrawl) {
 
             URLDepthPair urlDepthPair = urlQueue.poll();
-
-            Date d = new Date();
-            SimpleDateFormat ft = new SimpleDateFormat("hh:mm:ss");
-            System.out.println("Executing Time for link Id " + urlDepthPair.id + " and link url "+urlDepthPair.url + " = " + ft.format(d));
-
+            String url = urlDepthPair.url;
+            db.updateCrawledPageState(url, 1);
+            visitedPages.add(url);
+            crawledUrlCount++;
 
             crawlPage(urlDepthPair);
 
@@ -74,31 +84,7 @@ public class Crawler {
         int docId = urlDepthPair.id;
         String url = urlDepthPair.url;
         int depth = urlDepthPair.depth;
-
-        // Check if page is already visited
-        if (visitedPages.contains(url)) {
-            System.out.println("URL " + url + " is already visited. Skipping.");
-            return;
-        }
-        // Check if the URL exceeds depth
-        if (depth > depthToCrawl) {
-            System.out.println("URL " + url + " exceeds maximum crawl depth. Skipping.");
-            return;
-        }
-        // Check if the URL is allowed to crawl
-        if (!isUrlAllowedToCrawl(url)) {
-            return;
-        }
-
-        // Add the URL to visited pages and continue with the crawl process
-        visitedPages.add(url);
         System.out.println("Crawling URL: " + url + " at depth: " + depth);
-
-        visitedPages.add(url);
-        crawledUrlCount++;
-        System.out.println("visitedPages " + visitedPages);
-        System.out.println("crawledUrlCount " + crawledUrlCount);
-
 
         // Fetch the page content
         XhtmlConverter xhtmlConverter = new XhtmlConverter(url);
@@ -124,8 +110,11 @@ public class Crawler {
 
         for (Integer childId : childElements.keySet()) {
             String childUrl = childElements.get(childId);
-            if (!visitedPages.contains(childUrl) && depth + 1 <= depthToCrawl) {
+            // Check if page is already visited and Check if the URL exceeds depth and Check if the URL is allowed to crawl
+            if (!visitedPages.contains(childUrl) && depth + 1 <= depthToCrawl && isUrlAllowedToCrawl(url)) {
                 urlQueue.add(new URLDepthPair(childId, childUrl, depth + 1));
+                db.insertIntoCrawledPagesQueue(childUrl, depth + 1, 0);
+
             }
         }
     }
@@ -153,12 +142,12 @@ public class Crawler {
     }
 
 
-    private static class URLDepthPair {
+    public static class URLDepthPair {
         int id;
         String url;
         int depth;
 
-        URLDepthPair(int id, String url, int depth) {
+        public URLDepthPair(int id, String url, int depth) {
             this.id = id;
             this.url = url;
             this.depth = depth;
