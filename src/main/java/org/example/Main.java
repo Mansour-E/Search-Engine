@@ -18,6 +18,7 @@ public class Main {
         // THIS PART BELONGS TO EXERCISE  1 + 2
         //
 
+        // Start exercice1
         DBConnection db = new DBConnection("IS-Project", "postgres", "Yessin.10", true);
 
         String[] rootUrls = new String[]{"https://www.cs.rptu.de/en/studium/studiengaenge/bm-inf/sp.ma/"};
@@ -26,7 +27,12 @@ public class Main {
         // String[] test = new String[]{"student", "study"};
         // executeSearch(db, test,false, 9 );
 
+        // End exercice1
+
+
+
         // THIS PART BELONGS TO EXERCISE  3
+        // Start exercice3
         /*
         Scanner scanner = new Scanner(System.in);
         try {
@@ -62,6 +68,8 @@ public class Main {
             scanner.close();
         }
         */
+        // Start exercice3
+
     }
 
 }

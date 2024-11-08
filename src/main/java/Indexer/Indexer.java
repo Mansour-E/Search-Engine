@@ -16,14 +16,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import com.shekhargulati.urlcleaner.UrlCleaner;
 
-
-/**
- * Parse the text contained in the HTML document
- * Eliminate Stopwords/HTML markup
- * Extract meta data
- * Save Informations in the table
- * **/
-
 public class Indexer {
     DBConnection db;
     String htmlContent;
@@ -61,7 +53,6 @@ public class Indexer {
             linkAndDocIdElements.put(docId, link);
         }
     }
-
 
     public HashMap<Integer, String> getLinks() {
         return linkAndDocIdElements;

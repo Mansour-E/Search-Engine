@@ -198,7 +198,6 @@ public class DBConnection {
     }
 
 
-
     // Queries for Exercise 2
     private void initializeSchema() {
         try (Statement stmt = connection.createStatement()) {
@@ -269,6 +268,7 @@ public class DBConnection {
             e.printStackTrace();
         }
     }
+
     public void reCompute() {
         // Berechne TF, IDF und TF*IDF neu
         calculateTF();       // Berechne Term Frequency
@@ -280,10 +280,6 @@ public class DBConnection {
 
     // Queries For Exercise 3
     public List<SearchResult> conjuntiveCrawling (String[] searchedTerms, int resultSize) {
-        for (int i = 0; i < searchedTerms.length; i++) {
-            System.out.printf("test+ " + searchedTerms[i]);
-        }
-
         int searchedTermsCount = searchedTerms.length;
         List<SearchResult> foundItems = new ArrayList<>();
         List<String> stemmedSearchedTerms = Arrays.stream(searchedTerms)
