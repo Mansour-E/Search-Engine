@@ -102,6 +102,27 @@
 <br>
 <br>
 <h1>Task 2</h1>
+<h2><strong>TF*IDF Score Computation</strong></h2>
+<p>In Task 2, we implemented the computation and storage of TF*IDF scores for each term in our indexed documents. This scoring model helps assess a document's relevance based on term frequency (TF) and inverse document frequency (IDF). Here’s a summary of the implemented features:</p>
+
+<h2>Database Schema Update</h2>
+<ul>
+    <li>We modified the <code>features</code> table by adding three columns: <code>tf</code> (term frequency), <code>idf</code> (inverse document frequency), and <code>tfidf</code> (combined TF*IDF score).</li>
+    <li>To optimize query performance, we created an index on the <code>term</code> column in the <code>features</code> table, supporting faster calculations of TF and IDF.</li>
+</ul>
+
+<h2>TF*IDF Calculation</h2>
+<ul>
+    <li><strong>TF</strong>: Calculated using the formula <code>tf(t, d) = 1 + log(frequency)</code>, which boosts terms appearing more frequently within a document.</li>
+    <li><strong>IDF</strong>: Computed as <code>idf(t, D) = log(N / |{d ∈ D : t ∈ d}|)</code>, where <code>N</code> is the total number of documents and <code>|{d ∈ D : t ∈ d}|</code> counts the documents containing the term <code>t</code>. This formula dampens the effect of common terms across many documents.</li>
+    <li><strong>TF*IDF</strong>: Calculated by multiplying TF and IDF values for each term in each document, storing the results in the <code>tfidf</code> column.</li>
+</ul>
+
+<h2>Recalculation</h2>
+<p>Each time a new document is added, the TF, IDF, and TF*IDF scores are recomputed to maintain score accuracy across the collection.</p>
+
+<br>
+<br>
 <br>
 <br>
 
@@ -159,6 +180,39 @@
     <li>You will then specify the <strong>result size</strong>, which indicates the maximum number of URLs you want in the search results.</li>
     <li>Next, you will specify if the search should be <strong>conjunctive</strong> (all terms must be present) or <strong>disjunctive</strong> (any term can be present) by entering <code>true</code> or <code>false</code>.</li>
     <li>This process will repeat until you type <code>exit</code> to quit the program.</li>
+</ul>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<h1>Task 4</h1>
+<h2><strong>User and JSON Interface</strong></h2>
+<p>Task 4 involved building a web interface and a JSON API to allow users to interact with the search engine. Here’s an overview of the implementations:</p>
+
+<h2>HTML User Interface</h2>
+<ul>
+    <li>We designed a simple search interface using HTML under the Apache Tomcat framework. Users can enter keyword queries, which are processed by our search engine to display up to 20 ranked results.</li>
+    <li><strong>Special Operators:</strong> 
+        <ul>
+            <li><code>site:</code> restricts results to specific domains.</li>
+            <li>Quotation marks (<code>“”</code>) require exact matches for the enclosed keywords.</li>
+        </ul>
+    </li>
+</ul>
+
+<h2>JSON API (SearchServlet)</h2>
+<ul>
+    <li>We implemented a SearchServlet.java to handle HTTP GET requests, allowing queries and a specified number of results for example:(<code>k=20</code>). By default, the API performs disjunctive searches unless keywords are enclosed in quotation marks.</li>
+    <li><strong>JSON Response Structure:</strong>
+        <ul>
+            <li><strong>resultList</strong>: A ranked list of matching documents, each with a URL, rank, and relevance score.</li>
+            <li><strong>query</strong>: The <code>k</code> value and original query string.</li>
+            <li><strong>stat</strong>: Contains document frequency (df) statistics for each search term.</li>
+            <li><strong>cw</strong>: Represents the collection’s total word count.</li>
+        </ul>
+    </li>
 </ul>
 
 
