@@ -1,5 +1,7 @@
 package DB;
 import CommandInterface.SearchResult;
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 import java.sql.*;
 import java.util.*;
@@ -221,10 +223,6 @@ public class DBConnection {
 
     // Queries For Exercise 3
     public List<SearchResult> conjuntiveCrawling (String[] searchedTerms, int resultSize) {
-        for (int i = 0; i < searchedTerms.length; i++) {
-            System.out.printf("test+ " + searchedTerms[i]);
-        }
-
         int searchedTermsCount = searchedTerms.length;
         List<SearchResult> foundItems = new ArrayList<>();
         List<String> stemmedSearchedTerms = Arrays.stream(searchedTerms)
@@ -301,15 +299,58 @@ public class DBConnection {
         return foundItems;
     }
 
-    public void close() {
+
+    // Queries For Exercise 4
+    public JSONArray computeStat(String[] searchedTerms ) {
+        JSONArray statArray = new JSONArray();
+        String query = "SELECT  COUNT(docid) AS df FROM features WHERE term = ? ";
+
+        List<String> stemmedSearchedTerms = Arrays.stream(searchedTerms)
+                .map(term -> stemWord(term))
+                .collect(Collectors.toList());
+
         try {
-            if (connection != null && !connection.isClosed()) {
-                connection.close();
+            PreparedStatement preparedStatement = connection.prepareStatement(query);
+
+            for (int i = 0; i < stemmedSearchedTerms.size(); i++) {
+                preparedStatement.setString(1, stemmedSearchedTerms.get(i));
+                ResultSet resultSet = preparedStatement.executeQuery();
+
+                if (resultSet.next()) {
+                    JSONObject termObject = new JSONObject();
+                    termObject.put("term", searchedTerms[i]);
+                    termObject.put("df", resultSet.getInt("df"));
+                    statArray.put(termObject);
+                } else {
+                    // If the term does not exist in any document, set df to 0
+                    JSONObject termObject = new JSONObject();
+                    termObject.put("term", searchedTerms[i]);
+                    termObject.put("df", 0);
+                    statArray.put(termObject);
+                }
+                resultSet.close();
             }
+            preparedStatement.close();
         } catch (SQLException e) {
-            System.err.println("Error closing the connection: " + e.getMessage());
+            throw new RuntimeException(e);
+        }
+
+        return statArray;
+
+    }
+
+    public int calcualteCW() {
+        String query = "SELECT count(DISTINCT term) from features\n";
+
+        try( Statement stmt = connection.createStatement() ;
+            ResultSet rs = stmt.executeQuery(query)) {
+                rs.next();
+                return rs.getInt(1);
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
         }
     }
+
 
 
 }
