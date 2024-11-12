@@ -101,7 +101,7 @@ public class DBConnection {
                     ");";
             statement = connection.createStatement();
             statement.executeUpdate(query);
-            System.out.println("Features Table is created");
+            System.out.println("crawledPagesQueueTable Table is created");
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
@@ -227,7 +227,6 @@ public class DBConnection {
 
         try (Statement stmt = connection.createStatement()) {
             stmt.executeUpdate(updateTFQuery);
-            System.out.println("TF-Werte berechnet und aktualisiert.");
         } catch (SQLException e) {
             System.err.println("Fehler bei der Berechnung des TF-Werts: " + e.getMessage());
             e.printStackTrace();
@@ -249,7 +248,6 @@ public class DBConnection {
 
             stmt.setInt(1, totalDocuments);
             stmt.executeUpdate();
-            System.out.println("IDF-Werte berechnet und aktualisiert.");
         } catch (SQLException e) {
             System.err.println("Fehler bei der Berechnung des IDF-Werts: " + e.getMessage());
             e.printStackTrace();
@@ -264,7 +262,6 @@ public class DBConnection {
 
         try (Statement stmt = connection.createStatement()) {
             stmt.executeUpdate(updateTFIDFQuery);
-            System.out.println("TF*IDF-Werte berechnet und aktualisiert.");
         } catch (SQLException e) {
             System.err.println("Fehler bei der Berechnung des TF*IDF-Werts: " + e.getMessage());
             e.printStackTrace();
@@ -291,7 +288,7 @@ public class DBConnection {
         String insertedSearchedTerms = String.join(",", Collections.nCopies(searchedTermsCount, "?"));
         String conjunctiveQuery = "SELECT d.docid, d.url, f.score as score FROM documents as d\n" +
                 "jOIN (" +
-                "SELECT docid , SUM(tf) as score FROM features WHERE term IN (" + insertedSearchedTerms + ")\n" +
+                "SELECT docid , SUM(tfidf) as score FROM features WHERE term IN (" + insertedSearchedTerms + ")\n" +
                 "GROUP BY docid HAVING COUNT(DISTINCT term) = ? \n" +
                 "LIMIT ? ) as f\n" +
                 "ON d.docid = f.docid ORDER BY score DESC";
@@ -330,9 +327,9 @@ public class DBConnection {
         String insertedSearchedTerms = String.join(",", Collections.nCopies(searchedTermsCount, "?"));
         String disjunctiveQuery = "SELECT d.docid, d.url, f.score as score FROM documents as d\n" +
                 "jOIN (" +
-                    "SELECT docid , SUM(tf) as score FROM features WHERE term IN (" + insertedSearchedTerms + ")\n" +
+                    "SELECT docid , SUM(tfidf) as score FROM features WHERE term IN (" + insertedSearchedTerms + ")\n" +
                     "GROUP BY docid \n" +
-                    "ORDER BY SUM(tf) DESC\n" +
+                    "ORDER BY SUM(tfidf) DESC\n" +
                     "LIMIT ? ) as f\n" +
                 "ON d.docid = f.docid ORDER BY score DESC";
 

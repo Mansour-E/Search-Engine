@@ -48,6 +48,8 @@ public class Crawler {
 
     private void loadNotVisitedURL () {
         List<URLDepthPair> queuedUrls = db.getQueuedUrls();
+        System.out.printf("from loadNotVisitedURL", queuedUrls);
+
         urlQueue.addAll(queuedUrls);
     }
 

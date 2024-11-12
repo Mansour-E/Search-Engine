@@ -22,10 +22,10 @@ public class Main {
         DBConnection db = new DBConnection("IS-Project", "postgres", "Yessin.10", true);
 
         String[] rootUrls = new String[]{"https://www.cs.rptu.de/en/studium/studiengaenge/bm-inf/sp.ma/"};
-        Crawler crawler = new Crawler( db, rootUrls , 2, 3, false );
-        crawler.crawl();
-        // String[] test = new String[]{"student", "study"};
-        // executeSearch(db, test,false, 9 );
+        //Crawler crawler = new Crawler( db, rootUrls , 2, 3, false );
+        //crawler.crawl();
+        String[] test = new String[]{"student", "study"};
+        executeSearch(db, test,false, 9 );
 
         // End exercice1
 
