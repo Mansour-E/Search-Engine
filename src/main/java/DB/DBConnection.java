@@ -158,7 +158,7 @@ public class DBConnection {
         }
     }
 
-    public void calculateTF() {
+    public int calculateTF() {
         String updateTFQuery = """
             UPDATE features
             SET tf = CASE
@@ -174,9 +174,10 @@ public class DBConnection {
             System.err.println("Fehler bei der Berechnung des TF-Werts: " + e.getMessage());
             e.printStackTrace();
         }
+        return 0;
     }
 
-    public void calculateIDF() {
+    public int calculateIDF() {
         String updateIDFQuery = """
         UPDATE features
         SET idf = LOG(? / (SELECT COUNT(DISTINCT docid) FROM features WHERE term = features.term))
@@ -196,6 +197,7 @@ public class DBConnection {
             System.err.println("Fehler bei der Berechnung des IDF-Werts: " + e.getMessage());
             e.printStackTrace();
         }
+        return 0;
     }
 
     public void calculateTFIDF() {
