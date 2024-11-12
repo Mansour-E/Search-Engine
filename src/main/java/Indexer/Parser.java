@@ -33,7 +33,7 @@ public class Parser {
         char[] charArray = word.toCharArray();
         stemmer.add(charArray, charArray.length);
         stemmer.stem();
-        return stemmer.toString();
+        return stemmer.toString().toLowerCase();
     }
 
     // Function to extract HTML content and return terms with their frequency

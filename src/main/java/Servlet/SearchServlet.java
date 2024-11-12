@@ -130,8 +130,14 @@ public class SearchServlet extends HttpServlet {
         queryObject.put("query", searchTermsAsString);
         resultJson.put("query", queryObject);
 
-        //TODO cretae stat project
-        // TODO cretae cw project
+        // create stat object
+        JSONArray stat =  db.computeStat(searchTerms);
+        resultJson.put("stat", stat);
+
+        //add cw term
+        int cw = db.calcualteCW();
+        resultJson.put("cw", cw);
+
 
         return resultJson;
     }

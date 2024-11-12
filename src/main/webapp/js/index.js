@@ -21,7 +21,6 @@ $(function() {
             });
 
             $("#resultsContainer").append(resultList);
-            console.log($("#resultsContainer"))
         } else {
             $("#resultsContainer").append('<p class="text-muted">No results found.</p>');
         }
