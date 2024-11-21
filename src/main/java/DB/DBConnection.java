@@ -158,6 +158,20 @@ public class DBConnection {
             throw new RuntimeException(e);
         }
     }
+    public ResultSet executeQuery(String query) {
+        try {
+            Statement stmt = connection.createStatement();
+            return stmt.executeQuery(query);
+        } catch (SQLException e) {
+            throw new RuntimeException("Error executing query: " + query, e);
+        }
+    }
+    public DBConnection(Connection connection) {
+        this.connection = connection;
+    }
+    public Connection getConnection() {
+        return connection;
+    }
 
     public List<URLDepthPair> getQueuedUrls() {
         List<URLDepthPair> queuedUrls = new ArrayList<>();
@@ -300,7 +314,7 @@ public class DBConnection {
         }
     }
 
-    public void createViews() {
+    public void createViews() {//zum aufgabe 2 sheet2
         try (Statement stmt = connection.createStatement()) {
             // View zur schnellen Berechnung der Document Length (Summe der Term-Frequenzen)
             String createDocumentLengthView = """

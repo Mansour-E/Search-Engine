@@ -4,6 +4,7 @@ import DB.DBConnection;
 import org.example.Main;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
+import java.sql.*;
 
 import javax.print.Doc;
 import java.io.IOException;
@@ -56,6 +57,69 @@ public class Indexer {
 
     public HashMap<Integer, String> getLinks() {
         return linkAndDocIdElements;
+    }
+
+    /**
+     * Calculates BM25 scores and updates the features table.
+     */
+    public void calculateBM25() {
+        try {
+            // Document lengths abrufen
+            HashMap<Integer, Integer> documentLengths = new HashMap<>();
+            String docStatsQuery = "SELECT docid, document_length FROM document_length_view";
+            try (ResultSet statsResult = db.executeQuery(docStatsQuery)) {
+                while (statsResult.next()) {
+                    int docId = statsResult.getInt("docid");
+                    int documentLength = statsResult.getInt("document_length");
+                    documentLengths.put(docId, documentLength);
+                }
+            }
+
+            // Durchschnittliche Dokumentlänge abrufen
+            String avgLengthQuery = "SELECT average_length FROM average_length_view";
+            double avgDocumentLength = 0.0;
+            try (ResultSet avgLengthResult = db.executeQuery(avgLengthQuery)) {
+                if (avgLengthResult.next()) {
+                    avgDocumentLength = avgLengthResult.getDouble("average_length");
+                }
+            }
+
+            if (avgDocumentLength == 0) {
+                System.err.println("Durchschnittliche Dokumentlänge ist 0. Abbruch der Berechnung.");
+                return;
+            }
+
+            // BM25-Werte berechnen
+            double k1 = 1.2;
+            double b = 0.75;
+            String featuresQuery = "SELECT docid, term, term_frequency FROM features";
+            try (ResultSet featuresResult = db.executeQuery(featuresQuery)) {
+                while (featuresResult.next()) {
+                    int docId = featuresResult.getInt("docid");
+                    String term = featuresResult.getString("term");
+                    int termFrequency = featuresResult.getInt("term_frequency");
+
+                    int docLength = documentLengths.getOrDefault(docId, 0);
+                    double numerator = termFrequency * (k1 + 1);
+                    double denominator = termFrequency + k1 * (1 - b + b * (docLength / avgDocumentLength));
+                    double bm25Score = numerator / denominator;
+
+                    // BM25-Wert aktualisieren
+                    String updateQuery = "UPDATE features SET bm25_score = ? WHERE docid = ? AND term = ?";
+                    try (PreparedStatement pstmt = db.getConnection().prepareStatement(updateQuery)) {
+                        pstmt.setDouble(1, bm25Score);
+                        pstmt.setInt(2, docId);
+                        pstmt.setString(3, term);
+                        pstmt.executeUpdate();
+                    }
+                }
+            }
+
+            System.out.println("BM25 scores erfolgreich berechnet und in der Tabelle 'features' aktualisiert.");
+        } catch (SQLException e) {
+            System.err.println("Fehler bei der BM25-Berechnung: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 
 }

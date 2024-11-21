@@ -58,6 +58,7 @@ public class SearchServlet extends HttpServlet {
     }
 
 
+
     private JSONObject executeSearch (DBConnection db, JSONObject jsonQuery, int resultSize) throws SQLException {
 
         boolean isConjuctive;
