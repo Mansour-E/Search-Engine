@@ -538,6 +538,41 @@ public class DBConnection {
         }
     }
 
+    public List<SearchResult> searchWithView(String[] searchTerms, int resultSize, String viewName) throws SQLException {
+        List<SearchResult> results = new ArrayList<>();
+        String placeholders = String.join(",", Collections.nCopies(searchTerms.length, "?"));
+
+        String sql = String.format("""
+        SELECT id, url, rank, score
+        FROM %s
+        WHERE term IN (%s)
+        ORDER BY score DESC
+        LIMIT ?
+    """, viewName, placeholders);
+
+        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            int index = 1;
+            for (String term : searchTerms) {
+                pstmt.setString(index++, term);
+            }
+            pstmt.setInt(index, resultSize);
+
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    int id = rs.getInt("id");
+                    String url = rs.getString("url");
+                    int rank = rs.getInt("rank");
+                    results.add(new SearchResult(id, url, rank));
+                }
+            }
+        }
+        return results;
+    }
+
+
+
+
+
 
 
 

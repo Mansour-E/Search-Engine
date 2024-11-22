@@ -30,22 +30,24 @@ public class SearchServlet extends HttpServlet {
 
         String query = request.getParameter("query");
         int resultSize = Integer.parseInt(request.getParameter("k"));
-
+        String scoringModel = request.getParameter("scoringModel"); // "tfidf" oder "bm25"
 
         if (query != null) {
             try {
                 JSONObject jsonQuery = new JSONObject(query);
 
-                // Create connection with db
+                // Verbindung zur DB herstellen
                 DBConnection db = new DBConnection("IS-Project", "postgres", "Yessin.10", false);
 
-                JSONObject resultList = this.executeSearch(db, jsonQuery, resultSize);
-                System.out.printf("resultList" +resultList);
+                // View basierend auf dem Scoring-Modell wählen
+                String viewName = scoringModel.equalsIgnoreCase("bm25") ? "bm25_view" : "features_tfidf";
+
+                // Suchen und Ergebnisse mit dem ausgewählten Modell berechnen
+                JSONObject resultList = this.executeSearch(db, jsonQuery, resultSize, viewName);
 
                 response.setContentType("application/json");
                 response.setCharacterEncoding("UTF-8");
                 response.getWriter().write(resultList.toString());
-
 
             } catch (Exception e) {
                 e.printStackTrace();
@@ -54,58 +56,51 @@ public class SearchServlet extends HttpServlet {
         } else {
             response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Missing query parameter.");
         }
-
     }
 
 
 
-    private JSONObject executeSearch (DBConnection db, JSONObject jsonQuery, int resultSize) throws SQLException {
+    private JSONObject executeSearch(DBConnection db, JSONObject jsonQuery, int resultSize, String viewName) throws SQLException {
 
-        boolean isConjuctive;
         String[] searchTerms;
         String searchTermsAsString = "";
         Set<String> allowedDomainsAndSites = new HashSet<>();
         List<SearchResult> foundItems;
         JSONObject resultJson = new JSONObject();
 
+        // Suchbegriffe extrahieren
         JSONArray jsonSearchTerms = jsonQuery.getJSONArray("searchTerms");
         searchTerms = new String[jsonSearchTerms.length()];
         for (int i = 0; i < jsonSearchTerms.length(); i++) {
             String term = jsonSearchTerms.getString(i);
-            searchTerms[i] = term ;
+            searchTerms[i] = term;
             searchTermsAsString += (term + " ");
         }
 
+        // Zugelassene Domains/Sites extrahieren
         JSONArray jsonSiteDomainTerms = jsonQuery.getJSONArray("domainSiteTerms");
         for (int i = 0; i < jsonSiteDomainTerms.length(); i++) {
             allowedDomainsAndSites.add(jsonSiteDomainTerms.getString(i));
         }
 
-        isConjuctive = jsonQuery.getBoolean("isConjunctive");
+        // Ergebnisse basierend auf dem View abrufen
+        foundItems = db.searchWithView(searchTerms, resultSize, viewName);
 
-        if (isConjuctive) {
-            foundItems = db.conjuntiveCrawling(searchTerms, resultSize);
-        } else {
-            foundItems = db.disjunctiveCrawling(searchTerms, resultSize);
+        // Wenn keine Ergebnisse gefunden wurden
+        if (foundItems.isEmpty()) {
+            System.out.println("Keine Begriffe gefunden, die diesen Wörtern entsprechen");
         }
 
-        if(foundItems.isEmpty()) {
-            System.out.println("there are noterms that match these words");
-        }
-
-        System.out.printf("allowedDomainsAndSites " + allowedDomainsAndSites);
-        // create ResultList Object
+        // Ergebnisliste erstellen
         JSONArray resultList = new JSONArray();
         for (int i = 0; i < foundItems.size(); i++) {
             SearchResult foundItem = foundItems.get(i);
             String itemUrl = foundItem.getUrl();
             boolean shouldAddItem = allowedDomainsAndSites.isEmpty();
 
-            // Check if item URL is allowed
+            // Überprüfen, ob die URL erlaubt ist
             if (!shouldAddItem) {
                 for (String allowedDomain : allowedDomainsAndSites) {
-                    System.out.printf("allowedDomain " +allowedDomain);
-
                     if (itemUrl.contains(allowedDomain)) {
                         shouldAddItem = true;
                         break;
@@ -113,35 +108,35 @@ public class SearchServlet extends HttpServlet {
                 }
             }
 
-            // If allowed, add item to result list
+            // Wenn erlaubt, füge das Ergebnis hinzu
             if (shouldAddItem) {
                 JSONObject foundItemObject = new JSONObject();
                 foundItemObject.put("rank", i + 1);
                 foundItemObject.put("url", itemUrl);
                 foundItemObject.put("score", foundItem.getScore());
                 resultList.put(foundItemObject);
-                // System.out.println("rank " + (i + 1) + ": " + itemUrl + " (Score: " + foundItem.getScore() + ")");
             }
         }
+
         resultJson.put("resultList", resultList);
 
-        //create Query Object
+        // Query-Objekt erstellen
         JSONObject queryObject = new JSONObject();
         queryObject.put("k", resultSize);
         queryObject.put("query", searchTermsAsString);
         resultJson.put("query", queryObject);
 
-        // create stat object
-        JSONArray stat =  db.computeStat(searchTerms);
+        // Statistiken berechnen und hinzufügen
+        JSONArray stat = db.computeStat(searchTerms);
         resultJson.put("stat", stat);
 
-        //add cw term
+        // CW-Wert hinzufügen
         int cw = db.calcualteCW();
         resultJson.put("cw", cw);
 
-
         return resultJson;
     }
+
 
 }
 
