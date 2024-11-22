@@ -195,6 +195,22 @@ public class DBConnection {
         return queuedUrls;
     }
 
+    public  Set<String> getVisitedUrls() {
+        Set<String> visitedPages = new HashSet<>();
+        String query = "Select url From crawledPagesQueueTable WHERE state = 1";
+        try (Statement stmt = connection.createStatement();
+            ResultSet rs = stmt.executeQuery(query)) {
+            while (rs.next()) {
+                String url = rs.getString("url");
+                visitedPages.add(url);
+
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+        return visitedPages;
+    }
+
     public void updateCrawledPageState(String url, int state) {
         String query = "UPDATE crawledPagesQueueTable SET state = ? WHERE url = ?";
         try (PreparedStatement ps = connection.prepareStatement(query)) {
@@ -504,7 +520,7 @@ public class DBConnection {
 -------------------------------------------------------------------------------------------------------
  */
 
-// Exercie 1
+// Exercise 1
 
     public void extendDocumentsWithPagerankColumn() {
         Statement statement;
@@ -613,7 +629,7 @@ public class DBConnection {
         }
     }
 
-// Exercice 2
+// Exercise 2
 
     public void calculateBM25InDatabase() {
         String calculateBM25SQL = """

@@ -33,6 +33,9 @@ public class Crawler {
         this.allowToLeaveDomains = allowToLeaveDomains;
         this.threadPool = Executors.newFixedThreadPool(10);
 
+        // Load visited Pages
+        loadVisitedURl();
+
         // Load existing state from the database if the crawler was interrupted
         loadNotVisitedURL();
 
@@ -52,6 +55,10 @@ public class Crawler {
 
         urlQueue.addAll(queuedUrls);
     }
+    private void loadVisitedURl() {
+        Set<String> previousVisitedUrls = db.getVisitedUrls();
+        visitedPages.addAll(previousVisitedUrls);
+    }
 
     public void crawl() throws IOException {
         while (!urlQueue.isEmpty() && crawledUrlCount < nbrToCrawl) {
@@ -64,22 +71,9 @@ public class Crawler {
 
             crawlPage(urlDepthPair);
 
-            /*
-            // TODO Improve the Multi-threaded crawling
-            threadPool.submit(() -> {
-                try {
-                    crawlPage(urlDepthPair);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            });
 
-            Thread.sleep(1000);
-             */
         }
 
-        // threadPool.shutdown();
-        // threadPool.awaitTermination(1, TimeUnit.HOURS);
     }
 
     private void crawlPage(URLDepthPair urlDepthPair) throws IOException {
