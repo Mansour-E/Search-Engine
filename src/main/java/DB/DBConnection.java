@@ -166,7 +166,7 @@ public class DBConnection {
             throw new RuntimeException("Error executing query: " + query, e);
         }
     }
-    public DBConnection(Connection connection) {
+    public DBConnection() {
         this.connection = connection;
     }
     public Connection getConnection() {
@@ -492,6 +492,52 @@ public class DBConnection {
             throw new RuntimeException(e);
         }
     }
+/*-----------------------------------------------------------------------------------------------------
+-----------------------sheet 2 -------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------
+ */
+
+
+//Aufgabe 2.1
+
+    public void calculateBM25InDatabase() {
+        String calculateBM25SQL = """
+        INSERT INTO features_bm25 (document_id, term, bm25_score)
+        SELECT 
+            tf.document_id,
+            tf.term,
+            idf.idf * (tf.term_frequency * (1.5 + 1)) / 
+            (tf.term_frequency + 1.5 * (1 - 0.75 + 0.75 * (doc_lengths.document_length / avgdl.avgdl)))
+        FROM 
+            (SELECT document_id, term, COUNT(*) AS term_frequency 
+             FROM inverted_index GROUP BY document_id, term) AS tf
+        JOIN 
+            (SELECT term, LOG((CAST(total_docs AS FLOAT) - doc_count + 0.5) / (doc_count + 0.5)) AS idf
+             FROM (
+                 SELECT term, COUNT(DISTINCT document_id) AS doc_count, 
+                        (SELECT COUNT(DISTINCT document_id) FROM inverted_index) AS total_docs
+                 FROM inverted_index
+                 GROUP BY term
+             ) AS term_stats) AS idf
+        ON tf.term = idf.term
+        JOIN 
+            (SELECT document_id, COUNT(*) AS document_length 
+             FROM inverted_index GROUP BY document_id) AS doc_lengths
+        ON tf.document_id = doc_lengths.document_id
+        CROSS JOIN 
+            (SELECT AVG(document_length) AS avgdl 
+             FROM (SELECT document_id, COUNT(*) AS document_length 
+                   FROM inverted_index GROUP BY document_id) AS doc_lengths) AS avgdl;
+    """;
+
+        try (Connection connection = getConnection();
+             Statement statement = connection.createStatement()) {
+            statement.executeUpdate(calculateBM25SQL);
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
 
 
 
