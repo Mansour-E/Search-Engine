@@ -3,6 +3,9 @@ import CommandInterface.SearchResult;
 import Crawler.Crawler.URLDepthPair;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.la4j.Matrix;
+import org.la4j.matrix.dense.Basic2DMatrix;
+import org.la4j.vector.dense.BasicVector;
 
 import java.sql.*;
 import java.util.*;
@@ -14,6 +17,8 @@ import static Indexer.Parser.stemWord;
 public class DBConnection {
 
     private Connection connection ;
+    private Map<Integer, Integer> docIdToIndex = new HashMap<>();
+    private Map<Integer, Integer> indexToDocId = new HashMap<>();
 
     public DBConnection(String dbName, String dbOwner, String dbPassword, Boolean init ) {
         this.connection = this.connectToDb(dbName, dbOwner, dbPassword);
@@ -492,13 +497,123 @@ public class DBConnection {
             throw new RuntimeException(e);
         }
     }
+
+
 /*-----------------------------------------------------------------------------------------------------
 -----------------------sheet 2 -------------------------------------------------------------------------
 -------------------------------------------------------------------------------------------------------
  */
 
+// Exercie 1
 
-//Aufgabe 2.1
+    public void extendDocumentsWithPagerankColumn() {
+        Statement statement;
+        try {
+            String query = "ALTER TABLE Documents " +
+                    "ADD COLUMN IF NOT EXISTS pagerank DOUBLE PRECISION;";
+
+            statement = connection.createStatement();
+            statement.executeUpdate(query);
+            System.out.println("pagerank column is added");
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public Matrix createLinkMatrix(double tp) {
+        String uniqueDocsQuery = "SELECT DISTINCT docid FROM documents ORDER BY docid";
+        /*
+        String uniqueDocsQuery = "SELECT DISTINCT docid FROM (" +
+                "SELECT from_docid AS docid FROM links2 " +
+                "UNION " +
+                "SELECT to_docid AS docid FROM links2" +
+                ") AS unique_docs";
+
+         */
+
+        String linksQuery = "SELECT from_docid, to_docid FROM links";
+        Map<Integer, List<Integer>> linkMap = new HashMap<>();
+        int n = 0;
+
+        // Map docids to indexes
+        try (Statement stmt = connection.createStatement();
+             ResultSet rs = stmt.executeQuery(uniqueDocsQuery)) {
+            while (rs.next()) {
+                int docId = rs.getInt("docid");
+                docIdToIndex.put(docId, n);
+                indexToDocId.put(n,docId);
+                n++;
+
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+
+
+        // Create a map of outgoing links for each page
+        try (Statement stmt = connection.createStatement();
+             ResultSet rs = stmt.executeQuery(linksQuery)) {
+            while (rs.next()) {
+                int fromDocId = rs.getInt("from_docid");
+                int toDocId = rs.getInt("to_docid");
+                int fromIndex = docIdToIndex.get(fromDocId);
+                int toIndex = docIdToIndex.get(toDocId);
+
+                linkMap.computeIfAbsent(fromIndex, k -> new ArrayList<>()).add(toIndex);
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+
+        // Create the initial matrix
+        Matrix linkMatrix = new Basic2DMatrix(n, n);
+        double teleportationProb = tp / n;
+        for (int i = 0; i < n; i++) {
+            List<Integer> outgoingLinks = linkMap.getOrDefault(i, new ArrayList<>());
+            int outDegree = outgoingLinks.size();
+
+            if (outDegree == 0) {
+                // Dangling node: distribute teleportation probability equally across all nodes
+                for (int j = 0; j < n; j++) {
+                    linkMatrix.set(j, i, teleportationProb);
+                }
+            } else {
+                // Page with outgoing links: apply both link probability and teleportation probability
+                double linkProb = (1 - tp) / outDegree;
+                for (int j = 0; j < n; j++) {
+                    if (outgoingLinks.contains(j)) {
+                        // Link probability + teleportation probability
+                        linkMatrix.set(j, i, linkProb + teleportationProb);
+                    } else {
+                        // Teleportation probability only
+                        linkMatrix.set(j, i, teleportationProb);
+                    }
+                }
+            }
+        }
+
+        return linkMatrix;
+    }
+
+    public void insertPageRanking(BasicVector rank) {
+
+        String query = "UPDATE documents SET pagerank = ? WHERE docid = ?";
+        this.extendDocumentsWithPagerankColumn();
+
+        try (PreparedStatement preparedStatement = connection.prepareStatement(query)) {
+            for (int i = 0; i < rank.length(); i++) {
+                int docId = indexToDocId.get(i);
+                double pageRank = rank.get(i);
+                preparedStatement.setDouble(1, pageRank);
+                preparedStatement.setInt(2, docId);
+                preparedStatement.executeUpdate();
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+// Exercice 2
 
     public void calculateBM25InDatabase() {
         String calculateBM25SQL = """

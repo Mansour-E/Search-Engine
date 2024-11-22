@@ -2,6 +2,7 @@ package org.example;
 
 import Crawler.Crawler;
 import DB.DBConnection;
+import Sheet2.PageRank.PageRank;
 
 import java.io.IOException;
 import java.sql.*;
@@ -14,6 +15,10 @@ import static CommandInterface.commandInterface.executeSearch;
 public class Main {
     public static void main(String[] args) throws IOException, InterruptedException {
 
+        /*-----------------------------------------------------------------------------------------------------
+        -----------------------sheet 1 -------------------------------------------------------------------------
+        -------------------------------------------------------------------------------------------------------
+         */
 
         // THIS PART BELONGS TO EXERCISE  1 + 2
         //
@@ -24,8 +29,8 @@ public class Main {
         String[] rootUrls = new String[]{"https://www.cs.rptu.de/en/studium/studiengaenge/bm-inf/sp.ma/"};
         //Crawler crawler = new Crawler( db, rootUrls , 2, 3, false );
         //crawler.crawl();
-        String[] test = new String[]{"student", "study"};
-        executeSearch(db, test,false, 9 );
+        // String[] test = new String[]{"student", "study"};
+        // executeSearch(db, test,false, 9 );
 
         // End exercice1
 
@@ -69,6 +74,16 @@ public class Main {
         }
         */
         // Start exercice3
+
+
+        /*-----------------------------------------------------------------------------------------------------
+        -----------------------sheet 2 -------------------------------------------------------------------------
+        -------------------------------------------------------------------------------------------------------
+         */
+
+        // THIS PART BELONGS TO EXERCISE  1
+        PageRank pr = new PageRank();
+        pr.calculatePageRanking(db);
 
     }
 

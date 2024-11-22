@@ -20,11 +20,6 @@ import org.json.JSONArray;
 @WebServlet("/search")
 public class SearchServlet extends HttpServlet {
 
-    private static final String DB_URL = "jdbc:postgresql://localhost:5432/yourdatabase";
-    private static final String DB_USER = "yourusername";
-    private static final String DB_PASSWORD = "yourpassword";
-
-
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
 
