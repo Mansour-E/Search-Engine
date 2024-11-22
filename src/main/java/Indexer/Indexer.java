@@ -61,7 +61,6 @@ public class Indexer {
 
     // In Indexer.java
     public void calculateBM25() {
-        DBConnection db = new DBConnection();
         db.calculateBM25InDatabase();
     }
 

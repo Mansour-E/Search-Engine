@@ -2,6 +2,7 @@ package org.example;
 
 import Crawler.Crawler;
 import DB.DBConnection;
+import Sheet2.Classifier.Classifier;
 import Sheet2.PageRank.PageRank;
 
 import java.io.IOException;
@@ -83,7 +84,15 @@ public class Main {
 
         // THIS PART BELONGS TO EXERCISE  1
         PageRank pr = new PageRank();
-        pr.calculatePageRanking(db);
+        // pr.calculatePageRanking(db);
+
+
+        // THIS PART BELONGS TO EXERCISE  3
+
+        Classifier classifier = new Classifier();
+
+        System.out.println(classifier.isEnglishWord("the"));
+        System.out.println(classifier.isGermanWord("der"));
 
     }
 
