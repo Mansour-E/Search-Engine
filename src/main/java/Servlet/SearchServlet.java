@@ -38,7 +38,7 @@ public class SearchServlet extends HttpServlet {
                 String viewName = scoringModel.equalsIgnoreCase("bm25") ? "bm25_view" : "features_tfidf";
 
                 // Suchen und Ergebnisse mit dem ausgewählten Modell berechnen
-                JSONObject resultList = this.executeSearch(db, jsonQuery, resultSize, viewName);
+                JSONObject resultList = this.executeSearch(db, jsonQuery, resultSize, viewName, scoringModel);
 
                 response.setContentType("application/json");
                 response.setCharacterEncoding("UTF-8");
@@ -55,7 +55,7 @@ public class SearchServlet extends HttpServlet {
 
 
 
-    private JSONObject executeSearch(DBConnection db, JSONObject jsonQuery, int resultSize, String viewName) throws SQLException {
+    private JSONObject executeSearch(DBConnection db, JSONObject jsonQuery, int resultSize, String viewName, String scoringModel) throws SQLException {
 
         String[] searchTerms;
         String searchTermsAsString = "";
@@ -108,7 +108,11 @@ public class SearchServlet extends HttpServlet {
                 JSONObject foundItemObject = new JSONObject();
                 foundItemObject.put("rank", i + 1);
                 foundItemObject.put("url", itemUrl);
-                foundItemObject.put("score", foundItem.getScore());
+
+                // Score abhängig vom Modell setzen
+                foundItemObject.put("score", scoringModel.equalsIgnoreCase("combined")
+                        ? foundItem.getCombinedScore() // Kombinierter Score
+                        : foundItem.getScore()); // BM25 oder TF-IDF
                 resultList.put(foundItemObject);
             }
         }
@@ -131,6 +135,7 @@ public class SearchServlet extends HttpServlet {
 
         return resultJson;
     }
+
 
 
 }
