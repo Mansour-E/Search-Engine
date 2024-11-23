@@ -48,13 +48,15 @@ public class DBConnection {
         return connection;
     }
 
+    //                     "\tlang TEXT NOT NULL CHECK (lang IN ('en', 'ge')),\n" +
     public void createDocumentsTable() {
         Statement statement;
         try {
             String query = "CREATE TABLE IF NOT EXISTS documents(\n" +
                     "\tdocid SERIAL PRIMARY KEY,\n" +
                     "\turl TEXT NOT NULL,\n" +
-                    "\tcrawled_on_date CHAR(20) NOT NULL\n" +
+                    "\tcrawled_on_date CHAR(20) NOT NULL,\n" +
+                    "\tlang TEXT NOT NULL\n" +
                     ");";
             statement = connection.createStatement();
             statement.executeUpdate(query);
@@ -119,11 +121,13 @@ public class DBConnection {
         this.crawledPagesQueueTable();
     }
 
-    public int insertDocument(String url, String crawledDate) {
-        String insertQuery = "INSERT INTO documents (url, crawled_on_date) VALUES (?, ?) RETURNING docid;";
+    public int insertDocument(String url, String crawledDate, String lang) {
+        String insertQuery = "INSERT INTO documents (url, crawled_on_date, lang) VALUES (?, ?, ?) RETURNING docid;";
         try (PreparedStatement preparedStatement = connection.prepareStatement(insertQuery)) {
             preparedStatement.setString(1, url);
             preparedStatement.setString(2, crawledDate);
+            preparedStatement.setString(3, lang);
+
 
             ResultSet resultSet = preparedStatement.executeQuery();
             if (resultSet.next()) {
@@ -187,7 +191,8 @@ public class DBConnection {
                 int id = rs.getInt("id");
                 String url = rs.getString("url");
                 int depth = rs.getInt("depth");
-                queuedUrls.add(new URLDepthPair(id, url, depth));
+                // Unknown because they have not yet crawled
+                queuedUrls.add(new URLDepthPair(id, url, depth, "Unknown"));
             }
         } catch (SQLException e) {
             e.printStackTrace();
@@ -695,6 +700,18 @@ public class DBConnection {
             System.out.println("BM25 View created");
         } catch (SQLException e) {
             System.err.println("Fehler beim Erstellen der Views: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+// Exercise 3
+    public void updateLanguageDocuments(String url, String lang) {
+        String query = "UPDATE documents SET lang = ? WHERE url = ?";
+        try (PreparedStatement ps = connection.prepareStatement(query)) {
+            ps.setString(1, lang);
+            ps.setString(2, url);
+            ps.executeUpdate();
+        } catch (SQLException e) {
             e.printStackTrace();
         }
     }

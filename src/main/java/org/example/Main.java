@@ -27,9 +27,9 @@ public class Main {
         // Start exercice1
         DBConnection db = new DBConnection("IS-Project", "postgres", "Yessin.10", true);
 
-        String[] rootUrls = new String[]{"https://www.cs.rptu.de/en/studium/studiengaenge/bm-inf/sp.ma/"};
-        //Crawler crawler = new Crawler( db, rootUrls , 2, 3, false );
-        //crawler.crawl();
+        String[] rootUrls = new String[]{"https://www.cs.rptu.de/en/studium/studiengaenge/bm-inf/sp.ma/", "https://rptu.de"};
+        Crawler crawler = new Crawler( db, rootUrls , 2, 3, false );
+        crawler.crawl();
         // String[] test = new String[]{"student", "study"};
         // executeSearch(db, test,false, 9 );
 
@@ -85,14 +85,6 @@ public class Main {
         // THIS PART BELONGS TO EXERCISE  1
         PageRank pr = new PageRank();
         // pr.calculatePageRanking(db);
-
-
-        // THIS PART BELONGS TO EXERCISE  3
-
-        Classifier classifier = new Classifier();
-
-        System.out.println(classifier.isEnglishWord("the"));
-        System.out.println(classifier.isGermanWord("der"));
 
     }
 

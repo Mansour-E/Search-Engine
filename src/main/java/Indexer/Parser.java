@@ -37,7 +37,7 @@ public class Parser {
     }
 
     // Function to extract HTML content and return terms with their frequency
-    public HashMap<String, Integer> parseContent() throws IOException {
+    public HashMap<String, Integer> parseContent(String lang) throws IOException {
         HashMap<String, Integer> termWithCountElements = new HashMap<>();
 
         // Extract content from <body> only
@@ -45,15 +45,26 @@ public class Parser {
         for (Element element : bodyContent) {
             String[] terms = element.text().split("\\W+");
             for (String term : terms) {
-                // Clean the word
-                 String cleanedWord = stopwordsCleaner.cleanWord(term);
-                // Remove word if it is a stopword
-                if (stopwordsCleaner.isValid(cleanedWord)) {
-                    // Apply stemming
-                    String stemmedTerm = stemWord(term);
-                    // Regroup terms
-                    termWithCountElements.put(stemmedTerm, termWithCountElements.getOrDefault(stemmedTerm, 0) + 1);
+                if(lang.equals("English")) {
+                    // Clean the word
+                    String cleanedWord = stopwordsCleaner.cleanEnglishWord(term);
+                    // Remove word if it is a stopword
+                    if (stopwordsCleaner.isEnglishWordValid(cleanedWord)) {
+                        // Apply stemming
+                        String stemmedTerm = stemWord(term);
+                        // Regroup terms
+                        termWithCountElements.put(stemmedTerm, termWithCountElements.getOrDefault(stemmedTerm, 0) + 1);
+                    }
+                } else if (lang.equals("German")) {
+                    // Clean the word
+                    String cleanedWord = stopwordsCleaner.cleanGermanWord(term);
+                    // Remove word if it is a stopword
+                    if (stopwordsCleaner.isGermanWordValid(cleanedWord)) {
+                        // Regroup terms
+                        termWithCountElements.put(cleanedWord, termWithCountElements.getOrDefault(cleanedWord, 0) + 1);
+                    }
                 }
+
             }
         }
 
@@ -78,7 +89,7 @@ public class Parser {
         return linkElements;
     }
 
-    // Function to check if the given URL is valid
+    // This function to check if the given URL is valid
     private boolean isValidUrl(String url) {
         String urlRegex = "^(https?:\\/\\/)?([\\w.-]+)\\.([a-z\\.]{2,6})([\\/\\w\\.-]*)*\\/?$";
         Pattern pattern = Pattern.compile(urlRegex, Pattern.CASE_INSENSITIVE);
@@ -86,7 +97,5 @@ public class Parser {
 
         return matcher.matches();
     }
-
-
 
 }

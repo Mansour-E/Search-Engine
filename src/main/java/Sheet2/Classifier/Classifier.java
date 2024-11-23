@@ -1,20 +1,27 @@
 package Sheet2.Classifier;
 
 
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 public class Classifier {
 
     private static final Set<String> englishWords = new HashSet<>();
     private static final Set<String> germanWords = new HashSet<>();
-
     private String englishWordsFilePath = "src/main/java/Sheet2/Classifier/EnglishWords";
     private String germanWordsFilePath = "src/main/java/Sheet2/Classifier/GermanWords";
+
+    // Initial number of terms to analyze
+    private static final int MIN_TERMS = 20;
+    // 75% match confidence
+    private static final double CONFIDENCE_THRESHOLD = 0.75;
 
     public Classifier() throws IOException {
         // Load English words only once for all instances
@@ -59,11 +66,54 @@ public class Classifier {
         }
     }
 
-    public boolean isEnglishWord(String word) {
-        return englishWords.contains(word);
+    public String checkForLanguage(String htmlContent) {
+
+        System.out.println("############################################################");
+        if (htmlContent == null || htmlContent.trim().isEmpty()) {
+            return "Unknown";
+        }
+
+        int englishMatches = 0;
+        int germanMatches = 0;
+
+        Document doc = Jsoup.parse(htmlContent);
+        Elements bodyContent = doc.selectXpath("/html/body");
+
+        for (Element element : bodyContent) {
+            String[] terms = element.text().split("\\W+");
+            System.out.println("term" + Arrays.toString(terms));
+
+            for (String term : terms) {
+                if (englishWords.contains(term)) {
+                    englishMatches++;
+                }
+                if (germanWords.contains(term)) {
+                    germanMatches++;
+                }
+            }
+            System.out.println("englishMatches" + englishMatches);
+            System.out.println("germanMatches" + germanMatches);
+
+            // Calculate confidence
+            double totalMatches = englishMatches + germanMatches;
+            if (totalMatches > 0) {
+                double englishConfidence = (double) englishMatches / totalMatches;
+                double germanConfidence = (double) germanMatches / totalMatches;
+
+                // Break early if a confident classification is achieved
+                if (englishConfidence >= CONFIDENCE_THRESHOLD || germanConfidence >= CONFIDENCE_THRESHOLD) {
+                    break;
+                }
+            }
+        }
+
+        // Final classification
+        if (englishMatches > germanMatches) {
+            return "English";
+        } else if (germanMatches > englishMatches) {
+            return "German";
+        }
+        return "Unknown";
     }
 
-    public boolean isGermanWord(String word) {
-        return germanWords.contains(word);
-    }
 }

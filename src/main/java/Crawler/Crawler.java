@@ -2,6 +2,7 @@ package Crawler;
 
 import DB.DBConnection;
 import Indexer.Indexer;
+import Sheet2.Classifier.Classifier;
 
 import java.io.IOException;
 import java.text.SimpleDateFormat;
@@ -25,25 +26,28 @@ public class Crawler {
     Queue<URLDepthPair> urlQueue = new LinkedList<>();
     Set<String> visitedPages = new HashSet<>();
     ExecutorService threadPool;
+    Classifier classifier ;
 
-    public Crawler(DBConnection db, String[] rootUrls , int depthToCrawl, int nbrToCrawl, Boolean allowToLeaveDomains) {
+    public Crawler(DBConnection db, String[] rootUrls , int depthToCrawl, int nbrToCrawl, Boolean allowToLeaveDomains) throws IOException {
         this.db = db;
         this.depthToCrawl = depthToCrawl;
         this.nbrToCrawl = nbrToCrawl;
         this.allowToLeaveDomains = allowToLeaveDomains;
         this.threadPool = Executors.newFixedThreadPool(10);
+        this.classifier = new Classifier();
 
         // Load visited Pages
         loadVisitedURl();
 
         // Load existing state from the database if the crawler was interrupted
-        loadNotVisitedURL();
+        // loadNotVisitedURL();
 
         // If the system was not interrupted, initialize the queue with root URLs
         if (urlQueue.isEmpty()) {
             for (String rootUrl : rootUrls) {
-                urlQueue.add(new URLDepthPair(-1, rootUrl, 0));
-                db.insertIntoCrawledPagesQueue(rootUrl, 0, 0);  // Initial state set to 0 (not visited)
+                urlQueue.add(new URLDepthPair(-1, rootUrl, 0, "Unknown"));
+                // Initial state set to 0 (not visited)
+                db.insertIntoCrawledPagesQueue(rootUrl, 0, 0);
             }
         }
 
@@ -51,8 +55,6 @@ public class Crawler {
 
     private void loadNotVisitedURL () {
         List<URLDepthPair> queuedUrls = db.getQueuedUrls();
-        System.out.printf("from loadNotVisitedURL", queuedUrls);
-
         urlQueue.addAll(queuedUrls);
     }
     private void loadVisitedURl() {
@@ -70,8 +72,6 @@ public class Crawler {
             crawledUrlCount++;
 
             crawlPage(urlDepthPair);
-
-
         }
 
     }
@@ -80,25 +80,35 @@ public class Crawler {
         int docId = urlDepthPair.id;
         String url = urlDepthPair.url;
         int depth = urlDepthPair.depth;
+        String lang = urlDepthPair.lang;
         System.out.println("Crawling URL: " + url + " at depth: " + depth);
 
         // Fetch the page content
         XhtmlConverter xhtmlConverter = new XhtmlConverter(url);
         String htmlContent = xhtmlConverter.convertToXHML();
 
-        // Create document in the database
+        // check for the document language
+        if(lang.equals("Unknown")) {
+            lang = classifier.checkForLanguage(htmlContent);
+            urlDepthPair.insertLang(lang);
+            System.out.println( "lang" + urlDepthPair.lang);
+        }
+
+        // Create document in the database In case of root url
         String crawledDate = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
         if (docId == -1 ) {
-            docId = db.insertDocument(url, crawledDate);
+            // Insert the document With the correct lang
+            System.out.println(" url" + url + " lang " + lang);
+            docId = db.insertDocument(url, crawledDate, lang);
         }else {
-            // IDEA
-            // update the crawledDate
-            // Ad new column called crawled state (crawled, visited)
-            // connection.updateDocumentCrawledDate(docId, crawledDate);
+
+            // Update document visited state
+            // Update document language
+            db.updateLanguageDocuments(url, lang);
         }
 
         // Index the page using the Indexer
-        Indexer indexer = new Indexer(db, htmlContent, docId);
+        Indexer indexer = new Indexer(db, htmlContent, docId, lang);
         indexer.indexHTMlContent();
 
         // Add child links to the queue for further crawling
@@ -108,7 +118,7 @@ public class Crawler {
             String childUrl = childElements.get(childId);
             // Check if page is already visited and Check if the URL exceeds depth and Check if the URL is allowed to crawl
             if (!visitedPages.contains(childUrl) && depth + 1 <= depthToCrawl && isUrlAllowedToCrawl(url)) {
-                urlQueue.add(new URLDepthPair(childId, childUrl, depth + 1));
+                urlQueue.add(new URLDepthPair(childId, childUrl, depth + 1, "Unknown"));
                 db.insertIntoCrawledPagesQueue(childUrl, depth + 1, 0);
 
             }
@@ -142,11 +152,19 @@ public class Crawler {
         int id;
         String url;
         int depth;
+        String lang = "Unknown"; ;
 
-        public URLDepthPair(int id, String url, int depth) {
+
+        public URLDepthPair(int id, String url, int depth, String lang ) {
             this.id = id;
             this.url = url;
             this.depth = depth;
+            this.lang = lang;
         }
+
+        public void insertLang(String lang) {
+            this.lang = lang;
+        }
+
     }
 }
