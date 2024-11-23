@@ -309,76 +309,9 @@ public class DBConnection {
         calculateIDF();      // Berechne Inverse Document Frequency
         calculateTFIDF();    // Berechne TF*IDF
     }
-    public void createBM25Tables() { //zum aufgabe 2 sheet2
-        try (Statement stmt = connection.createStatement()) {
-            // BM25-Statistiken für Dokumente (Document Length, Average Length, usw.)
-            String createBM25StatsTable = """
-            CREATE TABLE IF NOT EXISTS bm25_stats (
-                docid INT REFERENCES documents(docid),
-                document_length INT DEFAULT 0,
-                average_length REAL DEFAULT 0
-            );
-        """;
-            stmt.executeUpdate(createBM25StatsTable);
-            System.out.println("BM25-Stats Table created");
 
-            // Sicherstellen, dass die Features-Tabelle über eine zusätzliche BM25-Spalte verfügt
-            String addBM25Column = """
-            ALTER TABLE features
-            ADD COLUMN IF NOT EXISTS bm25_score REAL DEFAULT 0;
-        """;
-            stmt.executeUpdate(addBM25Column);
-            System.out.println("BM25-Score column added to Features Table");
-        } catch (SQLException e) {
-            System.err.println("Fehler beim Erstellen der BM25-Tabellen: " + e.getMessage());
-            e.printStackTrace();
-        }
-    }
 
-    public void createViews() {//zum aufgabe 2 sheet2
-        try (Statement stmt = connection.createStatement()) {
-            // View zur schnellen Berechnung der Document Length (Summe der Term-Frequenzen)
-            String createDocumentLengthView = """
-            CREATE OR REPLACE VIEW document_length_view AS
-            SELECT
-                docid,
-                SUM(term_frequency) AS document_length
-            FROM features
-            GROUP BY docid;
-        """;
-            stmt.executeUpdate(createDocumentLengthView);
-            System.out.println("Document Length View created");
 
-            // View zur Berechnung der durchschnittlichen Dokumentenlänge
-            String createAverageLengthView = """
-            CREATE OR REPLACE VIEW average_length_view AS
-            SELECT
-                AVG(document_length) AS average_length
-            FROM document_length_view;
-        """;
-            stmt.executeUpdate(createAverageLengthView);
-            System.out.println("Average Length View created");
-
-            // View zur Berechnung der BM25-Score für jedes Dokument
-            String createBM25View = """
-            CREATE OR REPLACE VIEW bm25_view AS
-            SELECT
-                f.docid,
-                f.term,
-                (f.tfidf / (f.tfidf + 1)) * 
-                (1.2 + 1) /
-                (1.2 * (1 - 0.75 + 0.75 * dl.document_length / al.average_length) + f.tfidf) AS bm25_score
-            FROM features f
-            JOIN document_length_view dl ON f.docid = dl.docid
-            JOIN average_length_view al ON 1=1;
-        """;
-            stmt.executeUpdate(createBM25View);
-            System.out.println("BM25 View created");
-        } catch (SQLException e) {
-            System.err.println("Fehler beim Erstellen der Views: " + e.getMessage());
-            e.printStackTrace();
-        }
-    }
 
 
 
@@ -669,6 +602,7 @@ public class DBConnection {
         }
     }
 
+
     public List<SearchResult> searchWithView(String[] searchTerms, int resultSize, String viewName) throws SQLException {
         List<SearchResult> results = new ArrayList<>();
         String placeholders = String.join(",", Collections.nCopies(searchTerms.length, "?"));
@@ -699,6 +633,101 @@ public class DBConnection {
         }
         return results;
     }
+
+
+    public void createCombinedScoreView() {
+        try (Statement stmt = connection.createStatement()) {
+            String createCombinedViewSQL = """
+        CREATE OR REPLACE VIEW combined_score_view AS
+        SELECT
+            bm25.docid,
+            bm25.term,
+            bm25.bm25_score,
+            pr.page_rank,
+            (0.5 * bm25.bm25_score + 0.5 * pr.page_rank) AS combined_score
+        FROM bm25_view bm25
+        JOIN page_rank_view pr ON bm25.docid = pr.docid;
+        """;
+            stmt.executeUpdate(createCombinedViewSQL);
+            System.out.println("Combined Score View created");
+        } catch (SQLException e) {
+            System.err.println("Fehler beim Erstellen der Combined Score View: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    public void createViews() {
+        try (Statement stmt = connection.createStatement()) {
+            // Bestehende Views erstellen
+            String createDocumentLengthView = """
+        CREATE OR REPLACE VIEW document_length_view AS
+        SELECT
+            docid,
+            SUM(term_frequency) AS document_length
+        FROM features
+        GROUP BY docid;
+        """;
+            stmt.executeUpdate(createDocumentLengthView);
+
+            String createAverageLengthView = """
+        CREATE OR REPLACE VIEW average_length_view AS
+        SELECT
+            AVG(document_length) AS average_length
+        FROM document_length_view;
+        """;
+            stmt.executeUpdate(createAverageLengthView);
+
+            String createBM25View = """
+        CREATE OR REPLACE VIEW bm25_view AS
+        SELECT
+            f.docid,
+            f.term,
+            (f.tfidf / (f.tfidf + 1)) * 
+            (1.2 + 1) /
+            (1.2 * (1 - 0.75 + 0.75 * dl.document_length / al.average_length) + f.tfidf) AS bm25_score
+        FROM features f
+        JOIN document_length_view dl ON f.docid = dl.docid
+        JOIN average_length_view al ON 1=1;
+        """;
+            stmt.executeUpdate(createBM25View);
+
+            System.out.println("BM25 View created");
+
+            // Combined Score View erstellen
+            createCombinedScoreView();
+        } catch (SQLException e) {
+            System.err.println("Fehler beim Erstellen der Views: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    public void createBM25Tables() { //zum aufgabe 2 sheet2
+        try (Statement stmt = connection.createStatement()) {
+            // BM25-Statistiken für Dokumente (Document Length, Average Length, usw.)
+            String createBM25StatsTable = """
+            CREATE TABLE IF NOT EXISTS bm25_stats (
+                docid INT REFERENCES documents(docid),
+                document_length INT DEFAULT 0,
+                average_length REAL DEFAULT 0
+            );
+        """;
+            stmt.executeUpdate(createBM25StatsTable);
+            System.out.println("BM25-Stats Table created");
+
+            // Sicherstellen, dass die Features-Tabelle über eine zusätzliche BM25-Spalte verfügt
+            String addBM25Column = """
+            ALTER TABLE features
+            ADD COLUMN IF NOT EXISTS bm25_score REAL DEFAULT 0;
+        """;
+            stmt.executeUpdate(addBM25Column);
+            System.out.println("BM25-Score column added to Features Table");
+        } catch (SQLException e) {
+            System.err.println("Fehler beim Erstellen der BM25-Tabellen: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+
 
 
 
