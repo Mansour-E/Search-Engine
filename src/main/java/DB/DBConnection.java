@@ -317,7 +317,7 @@ public class DBConnection {
 
 
     // Queries For Exercise 3
-    public List<SearchResult> conjuntiveCrawling (String[] searchedTerms, int resultSize) {
+    public List<SearchResult> conjuntiveCrawling (String[] searchedTerms, int resultSize, List<String> languages) {
         int searchedTermsCount = searchedTerms.length;
         List<SearchResult> foundItems = new ArrayList<>();
         List<String> stemmedSearchedTerms = Arrays.stream(searchedTerms)
@@ -325,21 +325,35 @@ public class DBConnection {
                 .collect(Collectors.toList());
 
         String insertedSearchedTerms = String.join(",", Collections.nCopies(searchedTermsCount, "?"));
-        String conjunctiveQuery = "SELECT d.docid, d.url, f.score as score FROM documents as d\n" +
-                "jOIN (" +
-                "SELECT docid , SUM(tfidf) as score FROM features WHERE term IN (" + insertedSearchedTerms + ")\n" +
-                "GROUP BY docid HAVING COUNT(DISTINCT term) = ? \n" +
-                "LIMIT ? ) as f\n" +
-                "ON d.docid = f.docid ORDER BY score DESC";
+        String insertedLanguages = String.join(",", Collections.nCopies(languages.size(), "?"));
 
+        String conjunctiveQuery =
+                "SELECT d.docid, d.url, f.score AS score " +
+                        "FROM documents d " +
+                        "JOIN (" +
+                        "   SELECT docid, SUM(tfidf) AS score " +
+                        "   FROM features " +
+                        "   WHERE term IN (" + insertedSearchedTerms + ") " +
+                        "   GROUP BY docid " +
+                        "   HAVING COUNT(DISTINCT term) = ? " +
+                        ") f " +
+                        "ON d.docid = f.docid " +
+                        "WHERE d.lang IN (" + insertedLanguages + ") " +
+                        "ORDER BY f.score DESC " +
+                        "LIMIT ?";
 
         try (PreparedStatement preparedStatement = connection.prepareStatement(conjunctiveQuery)) {
-            for (int i = 0; i < searchedTermsCount; i++) {
-                preparedStatement.setString(i + 1, stemmedSearchedTerms.get(i));
+            int parameterIndex = 1;
+            for (String term : stemmedSearchedTerms) {
+                preparedStatement.setString(parameterIndex++, term);
             }
 
-            preparedStatement.setInt(searchedTermsCount + 1, searchedTermsCount);
-            preparedStatement.setInt(searchedTermsCount + 2, resultSize);
+            preparedStatement.setInt(parameterIndex++, searchedTermsCount);
+            for (String lang : languages) {
+                preparedStatement.setString(parameterIndex++, lang);
+            }
+            preparedStatement.setInt(parameterIndex, resultSize);
+
 
 
             ResultSet resultSet = preparedStatement.executeQuery();
@@ -357,7 +371,7 @@ public class DBConnection {
     }
 
 
-    public List<SearchResult> disjunctiveCrawling(String[] searchedTerms, int resultSize) {
+    public List<SearchResult> disjunctiveCrawling(String[] searchedTerms, int resultSize, List<String> languages) {
         List<SearchResult> foundItems = new ArrayList<>();
         int searchedTermsCount = searchedTerms.length;
         List<String> stemmedSearchedTerms = Arrays.stream(searchedTerms)
@@ -365,21 +379,33 @@ public class DBConnection {
                 .collect(Collectors.toList());
 
         String insertedSearchedTerms = String.join(",", Collections.nCopies(searchedTermsCount, "?"));
-        String disjunctiveQuery = "SELECT d.docid, d.url, f.score as score FROM documents as d\n" +
-                "jOIN (" +
-                    "SELECT docid , SUM(tfidf) as score FROM features WHERE term IN (" + insertedSearchedTerms + ")\n" +
-                    "GROUP BY docid \n" +
-                    "ORDER BY SUM(tfidf) DESC\n" +
-                    "LIMIT ? ) as f\n" +
-                "ON d.docid = f.docid ORDER BY score DESC";
+        String insertedLanguages = String.join(",", Collections.nCopies(languages.size(), "?"));
+
+        String disjunctiveQuery =
+                "SELECT d.docid, d.url, f.score AS score " +
+                        "FROM documents d " +
+                        "JOIN (" +
+                        "   SELECT docid, SUM(tfidf) AS score " +
+                        "   FROM features " +
+                        "   WHERE term IN (" + insertedSearchedTerms + ") " +
+                        "   GROUP BY docid " +
+                        ") f " +
+                        "ON d.docid = f.docid " +
+                        "WHERE d.lang IN (" + insertedLanguages + ") " + // Use IN clause here
+                        "ORDER BY f.score DESC " +
+                        "LIMIT ?";
 
         try (PreparedStatement preparedStatement = connection.prepareStatement(disjunctiveQuery)) {
-            for (int i = 0; i < searchedTermsCount; i++) {
-                preparedStatement.setString(i + 1, stemmedSearchedTerms.get(i));
+            int parameterIndex = 1;
 
+            for (String term : stemmedSearchedTerms) {
+                preparedStatement.setString(parameterIndex++, term);
             }
-            preparedStatement.setInt(searchedTermsCount + 1, resultSize);
+            for (String lang : languages) {
+                preparedStatement.setString(parameterIndex++, lang);
+            }
 
+            preparedStatement.setInt(parameterIndex, resultSize);
 
             ResultSet resultSet = preparedStatement.executeQuery();
             while (resultSet.next()) {
@@ -387,13 +413,15 @@ public class DBConnection {
                 String foundDocURL = resultSet.getString("url");
                 int foundDocScore = resultSet.getInt("score");
 
-                foundItems.add(new SearchResult(foundDocid,foundDocURL, foundDocScore ));
+                foundItems.add(new SearchResult(foundDocid, foundDocURL, foundDocScore));
             }
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
+
         return foundItems;
     }
+
 
 
     // Queries For Exercise 4

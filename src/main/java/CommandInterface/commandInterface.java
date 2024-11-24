@@ -10,10 +10,11 @@ public class commandInterface {
 
     public static List<SearchResult> executeSearch (DBConnection db, String[] searchTerms, boolean isConjuctive, int resultSize ) {
         List<SearchResult> foundItems;
+        String[] lang = new String[]{"English", "German" };
         if(isConjuctive) {
-            foundItems = db.conjuntiveCrawling (searchTerms,resultSize);
+            foundItems = db.conjuntiveCrawling (searchTerms,resultSize, List.of(lang));
         }else {
-            foundItems = db.disjunctiveCrawling(searchTerms,resultSize);
+            foundItems = db.disjunctiveCrawling(searchTerms,resultSize, List.of(lang));
         }
 
 

@@ -1,6 +1,4 @@
 $(function() {
-
-
     function displayResults(response) {
         console.log("displayResults", response)
         $("#resultsContainer").empty();
@@ -29,11 +27,20 @@ $(function() {
     $("button").on("click", function(event) {
         event.preventDefault()
         const k = 20;
+        let  languages = $("#langBox .form-check-input:checked").map(function() {
+                                 return $(this).val();
+                             }).get()
+
+        if (languages.length == 0) {
+           languages = ['English', "German"]
+        }
+        console.log("languages", languages)
 
         const query = {
             searchTerms: $("#searchQuery").val().trim().split(/\s+/),
             domainSiteTerms: $("#siteQuery").val().trim().split(/\s+/),
-            isConjunctive: $("#conjunctiveCheck").is(":checked")
+            isConjunctive: $("#conjunctiveCheck").is(":checked"),
+            languages: languages
         };
 
         $.ajax({
