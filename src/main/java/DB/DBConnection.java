@@ -320,9 +320,17 @@ public class DBConnection {
     public List<SearchResult> conjuntiveCrawling (String[] searchedTerms, int resultSize, List<String> languages) {
         int searchedTermsCount = searchedTerms.length;
         List<SearchResult> foundItems = new ArrayList<>();
+
         List<String> stemmedSearchedTerms = Arrays.stream(searchedTerms)
-                .map(term -> stemWord(term))
+                .map(term -> {
+                    String stemmedWord = stemWord(term);
+                    // Check for corrections
+                    String correctedTerm = suggestionCorrectionIfNecessary(stemmedWord, term);
+                    // If correctedTerm is not empty, it means the word was corrected
+                    return !correctedTerm.isEmpty() ? correctedTerm : stemmedWord;
+                })
                 .collect(Collectors.toList());
+
 
         String insertedSearchedTerms = String.join(",", Collections.nCopies(searchedTermsCount, "?"));
         String insertedLanguages = String.join(",", Collections.nCopies(languages.size(), "?"));
@@ -375,7 +383,13 @@ public class DBConnection {
         List<SearchResult> foundItems = new ArrayList<>();
         int searchedTermsCount = searchedTerms.length;
         List<String> stemmedSearchedTerms = Arrays.stream(searchedTerms)
-                .map(term -> stemWord(term))
+                .map(term -> {
+                    String stemmedWord = stemWord(term);
+                    // Check for corrections
+                    String correctedTerm = suggestionCorrectionIfNecessary(stemmedWord, term);
+                    // If correctedTerm is not empty, it means the word was corrected
+                    return !correctedTerm.isEmpty() ? correctedTerm : stemmedWord;
+                })
                 .collect(Collectors.toList());
 
         String insertedSearchedTerms = String.join(",", Collections.nCopies(searchedTermsCount, "?"));
@@ -733,6 +747,7 @@ public class DBConnection {
     }
 
 // Exercise 3
+    // This function update the lang column with the corresponding language of the document
     public void updateLanguageDocuments(String url, String lang) {
         String query = "UPDATE documents SET lang = ? WHERE url = ?";
         try (PreparedStatement ps = connection.prepareStatement(query)) {
@@ -743,6 +758,62 @@ public class DBConnection {
             e.printStackTrace();
         }
     }
+
+// Exercise 4
+    // This function suggests a correction for a misspelled word
+    public String suggestionCorrectionIfNecessary(String searchedWord, String term) {
+
+    // Query to check if the word exists in the database
+    String checkExistenceQuery = "SELECT term FROM features WHERE term = ?";
+
+    // If the searchedWord exists in the features table
+    try (PreparedStatement stmt = connection.prepareStatement(checkExistenceQuery)) {
+        stmt.setString(1, searchedWord);
+        try (ResultSet rs = stmt.executeQuery()) {
+            if (rs.next()) {
+                // Word exists, no correction needed
+                return "";
+            }
+        }
+    } catch (SQLException e) {
+        throw new RuntimeException("Error checking word existence: " + searchedWord, e);
+    }
+
+    // If the word doesn't exist, find the most similar word using Levenshtein distance
+    try (Statement createExtensionStmt = connection.createStatement()) {
+        createExtensionStmt.execute("CREATE EXTENSION IF NOT EXISTS fuzzystrmatch;");
+    } catch (SQLException e) {
+        throw new RuntimeException("Error ensuring fuzzystrmatch extension exists", e);
+    }
+
+        String correctionQuery =
+                "SELECT term, COUNT(*) AS frequency " +
+                        "FROM features " +
+                        "WHERE levenshtein(term, ?) <= 1 " +
+                        "GROUP BY term " +
+                        "ORDER BY frequency DESC " +
+                        "LIMIT 1";
+
+    try (PreparedStatement stmt = connection.prepareStatement(correctionQuery)) {
+        stmt.setString(1, searchedWord);
+
+        try (ResultSet rs = stmt.executeQuery()) {
+            if (rs.next()) {
+                // Return the most similar word
+                String correctedWord = rs.getString("term");
+                System.out.println("The word '" + term + "' is misspelled but has been corrected and replaced with the stemmed word: '" + correctedWord + "'.");
+                return correctedWord;
+            }
+        }
+    } catch (SQLException e) {
+        throw new RuntimeException("Error finding correction for word: " + searchedWord, e);
+    }
+
+    // No correction found
+    System.out.println("The word '" + term + "' is misspelled and could not be corrected.");
+    return "";
+}
+
 }
 
 

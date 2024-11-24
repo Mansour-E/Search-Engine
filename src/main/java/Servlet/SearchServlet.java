@@ -22,7 +22,6 @@ public class SearchServlet extends HttpServlet {
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        System.out.println("dfsvdfvdfvfdvfvfd" + request.getParameter("query"));
         String query = request.getParameter("query");
         int resultSize = Integer.parseInt(request.getParameter("k"));
 
