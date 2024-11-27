@@ -47,9 +47,7 @@ public class SearchServlet extends HttpServlet {
         } else {
             response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Missing query parameter.");
         }
-
     }
-
 
     private JSONObject executeSearch (DBConnection db, JSONObject jsonQuery, int resultSize) throws SQLException {
 

@@ -38,6 +38,7 @@ public class Crawler {
 
         // Load visited Pages
         loadVisitedURl();
+        System.out.println("visitedPages" + visitedPages);
 
         // Load existing state from the database if the crawler was interrupted
         // loadNotVisitedURL();
@@ -83,6 +84,21 @@ public class Crawler {
         String lang = urlDepthPair.lang;
         System.out.println("Crawling URL: " + url + " at depth: " + depth);
 
+        // Check if page is already visited
+        if (visitedPages.contains(url)) {
+            System.out.println("URL " + url + " is already visited. Skipping.");
+            return;
+        }
+        // Check if the URL exceeds depth
+        if (depth > depthToCrawl) {
+            System.out.println("URL " + url + " exceeds maximum crawl depth. Skipping.");
+            return;
+        }
+        // Check if the URL is allowed to crawl
+        if (!isUrlAllowedToCrawl(url)) {
+            return;
+        }
+
         // Fetch the page content
         XhtmlConverter xhtmlConverter = new XhtmlConverter(url);
         String htmlContent = xhtmlConverter.convertToXHML();
@@ -101,14 +117,14 @@ public class Crawler {
             System.out.println(" url" + url + " lang " + lang);
             docId = db.insertDocument(url, crawledDate, lang);
         }else {
-
             // Update document visited state
+
             // Update document language
             db.updateLanguageDocuments(url, lang);
         }
 
         // Index the page using the Indexer
-        Indexer indexer = new Indexer(db, htmlContent, docId, lang);
+        Indexer indexer = new Indexer(db, htmlContent, docId, visitedPages, lang);
         indexer.indexHTMlContent();
 
         // Add child links to the queue for further crawling
@@ -146,7 +162,6 @@ public class Crawler {
         }
         return false;
     }
-
 
     public static class URLDepthPair {
         int id;

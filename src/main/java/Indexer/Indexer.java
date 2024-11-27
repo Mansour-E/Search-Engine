@@ -25,24 +25,26 @@ public class Indexer {
     int rootDocID;
     Classifier classifier;
     String lang;
+    Set<String> visitedPages;
 
     List<String> linkElements;
     HashMap<Integer, String> linkAndDocIdElements = new HashMap<Integer, String>();
 
-    public Indexer(DBConnection db, String htmlContent, int docId, String lang) throws IOException {
+    public Indexer(DBConnection db, String htmlContent, int docId,Set<String> visitedPages, String lang) throws IOException {
         this.db = db;
         this.htmlContent = htmlContent;
         this.parser = new Parser(htmlContent);
         this.classifier = new Classifier();
         this.lang = lang;
         this.rootDocID = docId;
+        this.visitedPages = visitedPages;
     }
 
 
     // Function to Parse terms and links from the HTML content and store them into Db
     public void indexHTMlContent() throws IOException {
         HashMap<String, Integer> termFrequencies = parser.parseContent(lang);
-        List<String> parsedLinks = parser.parseLinks();
+        List<String> parsedLinks = parser.parseLinks(visitedPages);
         String createdDate = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
 
         // Insert terms into features table

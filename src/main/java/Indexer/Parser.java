@@ -8,10 +8,7 @@ import org.jsoup.select.Elements;
 
 import javax.swing.text.html.HTMLDocument;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -72,17 +69,19 @@ public class Parser {
     }
 
     // Function to extract and clean links from HTML content
-    public List<String> parseLinks() {
+    public List<String> parseLinks(Set<String> visitedPages) {
         List<String> linkElements = new ArrayList<>();
 
         // Extract only <a> tags with href attribute
         Elements linksContent = doc.selectXpath("/html/body//a");
         for (Element element : linksContent) {
             String link = element.attr("href");
-            if (isValidUrl(link)) {
+            if (isValidUrl(link) && !visitedPages.contains(link) ) {
                 // Clean the Link: I remove it, because it takes a lot of time.
                 // String cleanedLink = UrlCleaner.unshortenUrl(link);
                 linkElements.add(link);
+            }else {
+                System.out.println("Parser.java: URl " + link + " is already visited or not valid. Skipping");
             }
         }
 
