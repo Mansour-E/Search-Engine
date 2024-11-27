@@ -40,6 +40,7 @@ public class SearchServlet extends HttpServlet {
                 response.getWriter().write(resultList.toString());
 
 
+
             } catch (Exception e) {
                 e.printStackTrace();
                 response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid query format.");

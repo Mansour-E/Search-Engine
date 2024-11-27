@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="ISO-8859-1">
+    <title>Result page</title>
+</head>
+<body>
+<div id="results">
+</div>
+
+<script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const data = urlParams.get('data');
+
+    if (data) {
+        const resultList = JSON.parse(decodeURIComponent(data));
+        console.log('resultList', resultList)
+        const resultContainer = document.getElementById('results');
+        resultContainer.innerHTML = '';
+        resultContainer.innerHTML = JSON.stringify(resultList, null, 2);
+    }
+
+</script>
+</body>
+</html>

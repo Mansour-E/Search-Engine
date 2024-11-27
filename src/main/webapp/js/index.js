@@ -48,7 +48,9 @@ $(function() {
             url: '/webCrowler/search',
             data: {query:  JSON.stringify(query), k:k},
             success: function(response) {
-                displayResults(response);
+                // Redirect to the result page with the response as a query parameter
+                const encodedResult = encodeURIComponent(JSON.stringify(response));
+                window.location.href = `/webCrowler/resultPage.html?data=${encodedResult}`;
             },
             error: function(e) {
                 console.log(e)
