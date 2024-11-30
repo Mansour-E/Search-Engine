@@ -29,15 +29,15 @@ public class Main {
         DBConnection db = new DBConnection("IS-Project", "postgres", "Yessin.10", true);
 
         String[] rootUrls = new String[]{"https://www.cs.rptu.de/en/studium/studiengaenge/bm-inf/sp.ma/", "https://rptu.de"};
-        Crawler crawler = new Crawler( db, rootUrls , 2, 3, false );
-        crawler.crawl();
-        // String[] conjuctiveTerms = new String[]{"student", "study"};
-        // String[] disjuctiveTerms = new String[]{};
-        // String[] languages = new String[]{"English"};
+        // Crawler crawler = new Crawler( db, rootUrls , 2, 3, false );
+        // crawler.crawl();
+        String[] conjuctiveTerms = new String[]{"student", "study"};
+        String[] disjuctiveTerms = new String[]{};
+        String[] languages = new String[]{"English"};
         // db.disjunctiveCrawling(test, 5, List.of(languages))
 
 
-        // db.searchCrawling(conjuctiveTerms, disjuctiveTerms, 5 , List.of(languages) ) ;
+        db.searchCrawling(conjuctiveTerms, disjuctiveTerms, 5 , List.of(languages) ) ;
 
         // End exercice1
 

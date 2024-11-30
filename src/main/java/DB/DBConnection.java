@@ -347,6 +347,7 @@ public class DBConnection {
             }
         }
 
+        System.out.println("finalSearchResults" + List.of(finalSearchResults));
         return finalSearchResults;
     }
 
@@ -414,16 +415,29 @@ public class DBConnection {
     public List<SearchResult> disjunctiveCrawling(String[] searchedTerms, int resultSize, List<String> languages) {
         List<SearchResult> foundItems = new ArrayList<>();
         int searchedTermsCount = searchedTerms.length;
+
+        // Handle empty searchedTerms
+        if (searchedTermsCount == 0) {
+            System.out.println("No searched terms provided. Returning empty results.");
+            return foundItems;
+        }
+
+        // Handle empty languages
+        if (languages.isEmpty()) {
+            System.out.println("No languages provided. Returning empty results.");
+            return foundItems;
+        }
+
+        // Stem and correct searched terms
         List<String> stemmedSearchedTerms = Arrays.stream(searchedTerms)
                 .map(term -> {
                     String stemmedWord = stemWord(term);
-                    // Check for corrections
                     String correctedTerm = suggestionCorrectionIfNecessary(stemmedWord, term);
-                    // If correctedTerm is not empty, it means the word was corrected
                     return !correctedTerm.isEmpty() ? correctedTerm : stemmedWord;
                 })
                 .collect(Collectors.toList());
 
+        // Construct placeholders for the SQL query
         String insertedSearchedTerms = String.join(",", Collections.nCopies(searchedTermsCount, "?"));
         String insertedLanguages = String.join(",", Collections.nCopies(languages.size(), "?"));
 
@@ -437,22 +451,27 @@ public class DBConnection {
                         "   GROUP BY docid " +
                         ") f " +
                         "ON d.docid = f.docid " +
-                        "WHERE d.lang IN (" + insertedLanguages + ") " + // Use IN clause here
+                        "WHERE d.lang IN (" + insertedLanguages + ") " +
                         "ORDER BY f.score DESC " +
                         "LIMIT ?";
 
         try (PreparedStatement preparedStatement = connection.prepareStatement(disjunctiveQuery)) {
             int parameterIndex = 1;
 
+            // Bind searched terms
             for (String term : stemmedSearchedTerms) {
                 preparedStatement.setString(parameterIndex++, term);
             }
+
+            // Bind languages
             for (String lang : languages) {
                 preparedStatement.setString(parameterIndex++, lang);
             }
 
+            // Bind result size
             preparedStatement.setInt(parameterIndex, resultSize);
 
+            // Execute query and process results
             ResultSet resultSet = preparedStatement.executeQuery();
             while (resultSet.next()) {
                 int foundDocid = resultSet.getInt("docid");
@@ -467,7 +486,6 @@ public class DBConnection {
 
         return foundItems;
     }
-
 
 
     // Queries For Exercise 4
