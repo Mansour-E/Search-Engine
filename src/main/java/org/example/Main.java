@@ -25,7 +25,7 @@ public class Main {
         //
 
         // Start exercice1
-        DBConnection db = new DBConnection("IS-Project", "postgres", "Yessin.10", true);
+        DBConnection db = new DBConnection("IS-Project", "postgres", "9157", true);
 
         String[] rootUrls = new String[]{"https://www.cs.rptu.de/en/studium/studiengaenge/bm-inf/sp.ma/", "https://rptu.de"};
         Crawler crawler = new Crawler( db, rootUrls , 2, 2, false );
