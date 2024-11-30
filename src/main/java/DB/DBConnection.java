@@ -313,7 +313,8 @@ public class DBConnection {
         // Berechne TF, IDF und TF*IDF neu
         calculateTF();       // Berechne Term Frequency
         calculateIDF();      // Berechne Inverse Document Frequency
-        calculateTFIDF();    // Berechne TF*IDF
+        calculateTFIDF(); // Berechne TF*IDF
+        calculateBM25InDatabase(); //
     }
 
 
