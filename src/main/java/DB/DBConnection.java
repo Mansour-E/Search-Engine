@@ -6,6 +6,7 @@ import org.json.JSONObject;
 import org.la4j.Matrix;
 import org.la4j.matrix.dense.Basic2DMatrix;
 import org.la4j.vector.dense.BasicVector;
+import Sheet2.PageRank.PageRank;
 
 import java.sql.*;
 import java.util.*;
@@ -310,12 +311,20 @@ public class DBConnection {
     }
 
     public void reCompute() {
-        // Berechne TF, IDF und TF*IDF neu
-        calculateTF();       // Berechne Term Frequency
-        calculateIDF();      // Berechne Inverse Document Frequency
-        calculateTFIDF(); // Berechne TF*IDF
-        calculateBM25InDatabase(); //
+        try {
+            calculateTF();
+            calculateIDF();
+            calculateTFIDF();
+
+
+            System.out.println("calculate BM25...");
+            calculateBM25InDatabase();
+        } catch (SQLException e) {
+            System.err.println("Fehler bei der Recomputierung: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
+
 
 
     // Queries For Exercise 3
@@ -380,7 +389,73 @@ public class DBConnection {
         return foundItems;
     }
 
+    public List<SearchResult> disjunctiveCrawling(String[] searchedTerms, int resultSize, List<String> languages, String scoreOption) {
+        List<SearchResult> foundItems = new ArrayList<>();
+        int searchedTermsCount = searchedTerms.length;
+        List<String> stemmedSearchedTerms = Arrays.stream(searchedTerms)
+                .map(term -> {
+                    String stemmedWord = stemWord(term);
+                    // Check for corrections
+                    String correctedTerm = suggestionCorrectionIfNecessary(stemmedWord, term);
+                    // If correctedTerm is not empty, it means the word was corrected
+                    return !correctedTerm.isEmpty() ? correctedTerm : stemmedWord;
+                })
+                .collect(Collectors.toList());
 
+        String insertedSearchedTerms = String.join(",", Collections.nCopies(searchedTermsCount, "?"));
+        String insertedLanguages = String.join(",", Collections.nCopies(languages.size(), "?"));
+
+        // Default  TFIDF
+        String scoreExpression = "SUM(tfidf)";
+        if ("BM25".equalsIgnoreCase(scoreOption)) {
+            scoreExpression = "SUM(bm25)";
+        }
+
+        String disjunctiveQuery =
+                "SELECT d.docid, d.url, f.score AS score " +
+                        "FROM documents d " +
+                        "JOIN (" +
+                        "   SELECT docid, " + scoreExpression + " AS score " +
+                        "   FROM features " +
+                        "   WHERE term IN (" + insertedSearchedTerms + ") " +
+                        "   GROUP BY docid " +
+                        ") f " +
+                        "ON d.docid = f.docid " +
+                        "WHERE d.lang IN (" + insertedLanguages + ") " +
+                        "ORDER BY f.score DESC " +
+                        "LIMIT ?";
+
+        try (PreparedStatement preparedStatement = connection.prepareStatement(disjunctiveQuery)) {
+            int parameterIndex = 1;
+
+            for (String term : stemmedSearchedTerms) {
+                preparedStatement.setString(parameterIndex++, term);
+            }
+            for (String lang : languages) {
+                preparedStatement.setString(parameterIndex++, lang);
+            }
+
+            preparedStatement.setInt(parameterIndex, resultSize);
+
+            ResultSet resultSet = preparedStatement.executeQuery();
+            while (resultSet.next()) {
+                int foundDocid = resultSet.getInt("docid");
+                String foundDocURL = resultSet.getString("url");
+                int foundDocScore = resultSet.getInt("score");
+
+                foundItems.add(new SearchResult(foundDocid, foundDocURL, foundDocScore));
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+
+        return foundItems;
+}
+
+
+
+
+    /*
     public List<SearchResult> disjunctiveCrawling(String[] searchedTerms, int resultSize, List<String> languages) {
         List<SearchResult> foundItems = new ArrayList<>();
         int searchedTermsCount = searchedTerms.length;
@@ -436,8 +511,7 @@ public class DBConnection {
         }
 
         return foundItems;
-    }
-
+    }*/
 
 
     // Queries For Exercise 4
@@ -608,43 +682,52 @@ public class DBConnection {
 
 // Exercise 2
 
-    public void calculateBM25InDatabase() {
-        String calculateBM25SQL = """
-        INSERT INTO features_bm25 (document_id, term, bm25_score)
-        SELECT 
-            tf.document_id,
-            tf.term,
-            idf.idf * (tf.term_frequency * (1.5 + 1)) / 
-            (tf.term_frequency + 1.5 * (1 - 0.75 + 0.75 * (doc_lengths.document_length / avgdl.avgdl)))
-        FROM 
-            (SELECT document_id, term, COUNT(*) AS term_frequency 
-             FROM inverted_index GROUP BY document_id, term) AS tf
-        JOIN 
-            (SELECT term, LOG((CAST(total_docs AS FLOAT) - doc_count + 0.5) / (doc_count + 0.5)) AS idf
-             FROM (
-                 SELECT term, COUNT(DISTINCT document_id) AS doc_count, 
-                        (SELECT COUNT(DISTINCT document_id) FROM inverted_index) AS total_docs
-                 FROM inverted_index
-                 GROUP BY term
-             ) AS term_stats) AS idf
-        ON tf.term = idf.term
-        JOIN 
-            (SELECT document_id, COUNT(*) AS document_length 
-             FROM inverted_index GROUP BY document_id) AS doc_lengths
-        ON tf.document_id = doc_lengths.document_id
-        CROSS JOIN 
-            (SELECT AVG(document_length) AS avgdl 
-             FROM (SELECT document_id, COUNT(*) AS document_length 
-                   FROM inverted_index GROUP BY document_id) AS doc_lengths) AS avgdl;
+    public void calculateBM25InDatabase() throws SQLException {
+        // Schritt 1: Berechne den PageRank-Wert mit calculatePageRanking()
+        System.out.println("Berechne PageRank-Werte...");
+        PageRank pr = new PageRank();
+        pr.calculatePageRanking(this);
+
+        // Schritt 2: BM25-Werte berechnen und aktualisieren
+        System.out.println("Berechne BM25-Werte und kombiniere mit PageRank...");
+
+        String bm25UpdateQuery = """
+        WITH bm25_scores AS (
+           SELECT\s
+               f.docid,
+               f.term,
+               (f.tf * LOG((SELECT COUNT(*) FROM documents)::double precision / df)) AS bm25
+           FROM features f
+           JOIN (
+               SELECT\s
+                   term,
+                   COUNT(DISTINCT docid) AS df
+               FROM features
+               GROUP BY term
+           ) term_df ON f.term = term_df.term
+       ),
+       combined_scores AS (
+           SELECT\s
+               bm25.docid,
+               bm25.term,
+               bm25.bm25 + COALESCE(d.pagerank, 0) AS combined_score  -- PageRank aus der 'documents'-Tabelle
+           FROM bm25_scores bm25
+           LEFT JOIN documents d ON bm25.docid = d.docid  -- PageRank-Wert direkt aus der 'documents'-Tabelle holen
+       )
+       UPDATE features
+       SET bm25 = combined_scores.combined_score
+       FROM combined_scores
+       WHERE features.docid = combined_scores.docid
+         AND features.term = combined_scores.term;
     """;
 
-        try (Connection connection = getConnection();
-             Statement statement = connection.createStatement()) {
-            statement.executeUpdate(calculateBM25SQL);
-        } catch (SQLException e) {
-            e.printStackTrace();
+        try (PreparedStatement ps = connection.prepareStatement(bm25UpdateQuery)) {
+            ps.executeUpdate();
         }
+
+        System.out.println("BM25-Werte erfolgreich mit PageRank kombiniert und aktualisiert.");
     }
+
 
     public List<SearchResult> searchWithView(String[] searchTerms, int resultSize, String viewName) throws SQLException {
         List<SearchResult> results = new ArrayList<>();

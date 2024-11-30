@@ -3,9 +3,9 @@ package CommandInterface;
 public class SearchResult {
     private final int docID;
     private final String url;
-    private final int score;
+    private final double score;
 
-    public SearchResult(int docID, String url, int score) {
+    public SearchResult(int docID, String url, double score) {
         this.docID = docID;
         this.url = url;
         this.score = score;
@@ -19,7 +19,9 @@ public class SearchResult {
         return url;
     }
 
-    public int getScore() {
+    public double getScore() {
         return score;
     }
+
+
 }

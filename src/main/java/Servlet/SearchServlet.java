@@ -87,7 +87,7 @@ public class SearchServlet extends HttpServlet {
         if (isConjuctive) {
             foundItems = db.conjuntiveCrawling(searchTerms, resultSize, List.of(langTerms));
         } else {
-            foundItems = db.disjunctiveCrawling(searchTerms, resultSize, List.of(langTerms));
+            foundItems = db.conjuntiveCrawling(searchTerms, resultSize, List.of(langTerms));
         }
 
         if(foundItems.isEmpty()) {

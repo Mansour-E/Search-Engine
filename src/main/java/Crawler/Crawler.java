@@ -85,10 +85,7 @@ public class Crawler {
         System.out.println("Crawling URL: " + url + " at depth: " + depth);
 
         // Check if page is already visited
-        if (visitedPages.contains(url)) {
-            System.out.println("URL " + url + " is already visited. Skipping.");
-            return;
-        }
+
         // Check if the URL exceeds depth
         if (depth > depthToCrawl) {
             System.out.println("URL " + url + " exceeds maximum crawl depth. Skipping.");

@@ -14,7 +14,7 @@ public class commandInterface {
         if(isConjuctive) {
             foundItems = db.conjuntiveCrawling (searchTerms,resultSize, List.of(lang));
         }else {
-            foundItems = db.disjunctiveCrawling(searchTerms,resultSize, List.of(lang));
+            foundItems = db.conjuntiveCrawling(searchTerms,resultSize, List.of(lang));
         }
 
 

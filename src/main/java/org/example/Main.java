@@ -1,5 +1,6 @@
 package org.example;
 
+import CommandInterface.SearchResult;
 import Crawler.Crawler;
 import DB.DBConnection;
 import Sheet2.Classifier.Classifier;
@@ -9,6 +10,7 @@ import java.io.IOException;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Scanner;
 
 import static CommandInterface.commandInterface.executeSearch;
@@ -27,11 +29,17 @@ public class Main {
         // Start exercice1
         DBConnection db = new DBConnection("IS-Project", "postgres", "9157", true);
 
-        String[] rootUrls = new String[]{"https://www.cs.rptu.de/en/studium/studiengaenge/bm-inf/sp.ma/", "https://rptu.de"};
-        Crawler crawler = new Crawler( db, rootUrls , 2, 2, false );
-        crawler.crawl();
-        // String[] test = new String[]{"student", "study"};
-        // executeSearch(db, test,false, 9 );
+        //String[] rootUrls = new String[]{"https://www.cs.rptu.de/en/studium/studiengaenge/bm-inf/sp.ma/", "https://rptu.de"};
+        //Crawler crawler = new Crawler( db, rootUrls , 2, 2, false );
+        //crawler.crawl();
+
+        String[] test = new String[]{"student", "study"};
+        List<String> languages = List.of("English");
+        List<SearchResult> results = db.disjunctiveCrawling(test, 5, languages,"BM25");
+        for (SearchResult result : results) {
+            System.out.printf("DocID: %d, URL: %s, Score: %.4f%n", result.getDocID(), result.getUrl(), result.getScore());
+        }
+
 
         // End exercice1
 

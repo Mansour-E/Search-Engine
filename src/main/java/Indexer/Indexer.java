@@ -68,7 +68,7 @@ public class Indexer {
     }
 
     // In Indexer.java
-    public void calculateBM25() {
+    public void calculateBM25() throws SQLException {
         db.calculateBM25InDatabase();
     }
 
