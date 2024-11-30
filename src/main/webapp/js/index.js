@@ -1,5 +1,4 @@
 $(function() {
-
     function parseSearchQuery(query) {
         // Matches 'site:example.com'
         const siteRegex = /site:([^\s]+)/g;
@@ -39,7 +38,6 @@ $(function() {
             unquotedTerms,
         };
     }
-
     function displayResults(response) {
         console.log("displayResults", response)
         $("#resultsContainer").empty();
@@ -66,42 +64,44 @@ $(function() {
     }
 
     $("button").on("click", function(event) {
-
         const parsedQuery = parseSearchQuery($("#searchQuery").val());
-
         event.preventDefault()
         const k = 20;
-        let  languages = $("#langBox .form-check-input:checked").map(function() {
+        let languages = $("#langBox .form-check-input:checked").map(function() {
                                  return $(this).val();
                              }).get()
-
         if (languages.length == 0) {
            languages = ['English', "German"]
         }
+
+        let scoreOption = $("#scoreOptions .form-check-input:checked").val()
+        let displayOption = $("#displayOptions .form-check-input:checked").val()
+
         const query = {
             conjuctiveSearchTerms: parsedQuery.quotedTerms,
             disjunctiveSearchTerms: parsedQuery.unquotedTerms,
             domainSiteTerms: parsedQuery.sites,
-            isConjunctive: $("#conjunctiveCheck").is(":checked"),
+            scoreOption: scoreOption,
             languages: languages
         };
-
-        console.log('query', query)
-
         $.ajax({
             method: 'GET',
             url: '/webCrowler/search',
             data: {query:  JSON.stringify(query), k:k},
             success: function(response) {
+            if(displayOption === "jsonFile") {
                 // Redirect to the result page with the response as a query parameter
                 const encodedResult = encodeURIComponent(JSON.stringify(response));
                 window.location.href = `/webCrowler/resultPage.html?data=${encodedResult}`;
+            }else{
+                displayResults(response)
+            }
+
             },
             error: function(e) {
                 console.log(e)
             }
         })
-
 
     });
 });

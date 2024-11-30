@@ -12,9 +12,9 @@ public class commandInterface {
         List<SearchResult> foundItems;
         String[] lang = new String[]{"English", "German" };
         if(isConjuctive) {
-            foundItems = db.conjuntiveCrawling (searchTerms,resultSize, List.of(lang));
+            foundItems = db.conjuntiveCrawling (searchTerms,resultSize, List.of(lang) ,"tfidf");
         }else {
-            foundItems = db.conjuntiveCrawling(searchTerms,resultSize, List.of(lang));
+            foundItems = db.conjuntiveCrawling(searchTerms,resultSize, List.of(lang), "tfidf");
         }
 
 

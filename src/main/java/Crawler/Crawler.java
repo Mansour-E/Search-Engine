@@ -65,7 +65,6 @@ public class Crawler {
 
     public void crawl() throws IOException {
         while (!urlQueue.isEmpty() && crawledUrlCount < nbrToCrawl) {
-
             URLDepthPair urlDepthPair = urlQueue.poll();
             String url = urlDepthPair.url;
             // Check if page is already visited
@@ -90,7 +89,7 @@ public class Crawler {
             }
 
         }
-
+        db.reCompute();
     }
 
     private void crawlPage(URLDepthPair urlDepthPair) throws IOException {

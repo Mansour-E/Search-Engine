@@ -187,6 +187,7 @@ public class SearchServlet extends HttpServlet {
             langTerms[i] = lang ;
         }
 
+        String scoreOption = jsonQuery.getString("scoreOption");
 
 
         /*
@@ -197,7 +198,7 @@ public class SearchServlet extends HttpServlet {
         }
          */
 
-        foundItems = db.searchCrawling(conjuctiveSearchTerms, disjunctiveSearchTerms,resultSize, List.of(langTerms));
+        foundItems = db.searchCrawling(conjuctiveSearchTerms, disjunctiveSearchTerms,resultSize, List.of(langTerms), scoreOption);
 
         if(foundItems.isEmpty()) {
             System.out.println("there are noterms that match these words");
@@ -242,6 +243,7 @@ public class SearchServlet extends HttpServlet {
         resultJson.put("query", queryObject);
 
         // create stat object
+
         JSONArray stat =  db.computeStat(conjuctiveSearchTerms, disjunctiveSearchTerms);
         resultJson.put("stat", stat);
 

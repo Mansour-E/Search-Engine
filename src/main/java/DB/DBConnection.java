@@ -10,6 +10,8 @@ import Sheet2.PageRank.PageRank;
 import java.sql.*;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
 import static Indexer.Parser.stemWord;
 
 public class DBConnection {
@@ -284,135 +286,168 @@ public class DBConnection {
     }
 
     // Queries For Exercise 3
-    public List<SearchResult> conjuntiveCrawling (String[] searchedTerms, int resultSize, List<String> languages) {
-        int searchedTermsCount = searchedTerms.length;
-        List<SearchResult> foundItems = new ArrayList<>();
-
-        List<String> stemmedSearchedTerms = Arrays.stream(searchedTerms)
-                .map(term -> {
-                    String stemmedWord = stemWord(term);
-                    // Check for corrections
-                    String correctedTerm = suggestionCorrectionIfNecessary(stemmedWord, term);
-                    // If correctedTerm is not empty, it means the word was corrected
-                    return !correctedTerm.isEmpty() ? correctedTerm : stemmedWord;
-                })
+    public List<SearchResult> searchCrawling(String[] conjunctiveSearchedTerms, String[] disjunctiveSearchedTerms, int resultSize, List<String> languages, String scoreOption) {
+        List<SearchResult> foundConjunctiveSearchedTerms = this.conjuntiveCrawling(conjunctiveSearchedTerms, resultSize, languages, scoreOption);
+        List<SearchResult> foundDisjunctiveSearchedTerms = this.disjunctiveCrawling(disjunctiveSearchedTerms, resultSize, languages, scoreOption);
+        List<SearchResult> totalSearchResult = Stream.concat(foundConjunctiveSearchedTerms.stream(), foundDisjunctiveSearchedTerms.stream())
                 .collect(Collectors.toList());
-
-
-        String insertedSearchedTerms = String.join(",", Collections.nCopies(searchedTermsCount, "?"));
-        String insertedLanguages = String.join(",", Collections.nCopies(languages.size(), "?"));
-
-        String conjunctiveQuery =
-                "SELECT d.docid, d.url, f.score AS score " +
-                        "FROM documents d " +
-                        "JOIN (" +
-                        "   SELECT docid, SUM(tfidf) AS score " +
-                        "   FROM features " +
-                        "   WHERE term IN (" + insertedSearchedTerms + ") " +
-                        "   GROUP BY docid " +
-                        "   HAVING COUNT(DISTINCT term) = ? " +
-                        ") f " +
-                        "ON d.docid = f.docid " +
-                        "WHERE d.lang IN (" + insertedLanguages + ") " +
-                        "ORDER BY f.score DESC " +
-                        "LIMIT ?";
-
-        try (PreparedStatement preparedStatement = connection.prepareStatement(conjunctiveQuery)) {
-            int parameterIndex = 1;
-            for (String term : stemmedSearchedTerms) {
-                preparedStatement.setString(parameterIndex++, term);
+        List<SearchResult> sortedSearchResult = totalSearchResult.stream()
+                .sorted((result1, result2) -> Double.compare(result2.getScore(), result1.getScore()))
+                .collect(Collectors.toList());
+        Set<String> seenUrls = new HashSet<>();
+        List<SearchResult> finalSearchResults = new ArrayList<>();
+        for (SearchResult result : sortedSearchResult) {
+            if (seenUrls.size() >= resultSize) {
+                break;
             }
-
-            preparedStatement.setInt(parameterIndex++, searchedTermsCount);
-            for (String lang : languages) {
-                preparedStatement.setString(parameterIndex++, lang);
+            if (!seenUrls.contains(result.getUrl())) {
+                seenUrls.add(result.getUrl());
+                finalSearchResults.add(result);
             }
-            preparedStatement.setInt(parameterIndex, resultSize);
-
-
-
-            ResultSet resultSet = preparedStatement.executeQuery();
-            while (resultSet.next()) {
-                int foundDocid = resultSet.getInt("docid");
-                String foundDocURL = resultSet.getString("url");
-                int foundDocScore = resultSet.getInt("score");
-
-                foundItems.add(new SearchResult(foundDocid,foundDocURL, foundDocScore ));
-            }
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
         }
+        return finalSearchResults;
+    }
+    public List<SearchResult> conjuntiveCrawling (String[] searchedTerms, int resultSize, List<String> languages, String scoreOption) {
+        List<SearchResult> foundItems = new ArrayList<>();
+        if(searchedTerms.length != 0) {
+            int searchedTermsCount = searchedTerms.length;
+            List<String> stemmedSearchedTerms = Arrays.stream(searchedTerms)
+                    .map(term -> {
+                        String stemmedWord = stemWord(term);
+                        // Check for corrections
+                        String correctedTerm = suggestionCorrectionIfNecessary(stemmedWord, term);
+                        // If correctedTerm is not empty, it means the word was corrected
+                        return !correctedTerm.isEmpty() ? correctedTerm : stemmedWord;
+                    })
+                    .collect(Collectors.toList());
+
+
+            String insertedSearchedTerms = String.join(",", Collections.nCopies(searchedTermsCount, "?"));
+            String insertedLanguages = String.join(",", Collections.nCopies(languages.size(), "?"));
+            String scoreExpression = "SUM(tfidf)";
+            if ("BM25".equalsIgnoreCase(scoreOption)) {
+                scoreExpression = "SUM(bm25)";
+            }
+
+            String conjunctiveQuery =
+                    "SELECT d.docid, d.url, f.score AS score " +
+                            "FROM documents d " +
+                            "JOIN (" +
+                            "   SELECT docid, " + scoreExpression+ " AS score " +
+                            "   FROM features " +
+                            "   WHERE term IN (" + insertedSearchedTerms + ") " +
+                            "   GROUP BY docid " +
+                            "   HAVING COUNT(DISTINCT term) = ? " +
+                            ") f " +
+                            "ON d.docid = f.docid " +
+                            "WHERE d.lang IN (" + insertedLanguages + ") " +
+                            "ORDER BY f.score DESC " +
+                            "LIMIT ?";
+
+            try (PreparedStatement preparedStatement = connection.prepareStatement(conjunctiveQuery)) {
+                int parameterIndex = 1;
+                for (String term : stemmedSearchedTerms) {
+                    preparedStatement.setString(parameterIndex++, term);
+                }
+
+                preparedStatement.setInt(parameterIndex++, searchedTermsCount);
+                for (String lang : languages) {
+                    preparedStatement.setString(parameterIndex++, lang);
+                }
+                preparedStatement.setInt(parameterIndex, resultSize);
+
+
+
+                ResultSet resultSet = preparedStatement.executeQuery();
+                while (resultSet.next()) {
+                    int foundDocid = resultSet.getInt("docid");
+                    String foundDocURL = resultSet.getString("url");
+                    int foundDocScore = resultSet.getInt("score");
+
+                    foundItems.add(new SearchResult(foundDocid,foundDocURL, foundDocScore ));
+                }
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
         return foundItems;
     }
     public List<SearchResult> disjunctiveCrawling(String[] searchedTerms, int resultSize, List<String> languages, String scoreOption) {
         List<SearchResult> foundItems = new ArrayList<>();
-        int searchedTermsCount = searchedTerms.length;
-        List<String> stemmedSearchedTerms = Arrays.stream(searchedTerms)
-                .map(term -> {
-                    String stemmedWord = stemWord(term);
-                    // Check for corrections
-                    String correctedTerm = suggestionCorrectionIfNecessary(stemmedWord, term);
-                    // If correctedTerm is not empty, it means the word was corrected
-                    return !correctedTerm.isEmpty() ? correctedTerm : stemmedWord;
-                })
-                .collect(Collectors.toList());
+        if(searchedTerms.length != 0) {
+            int searchedTermsCount = searchedTerms.length;
+            List<String> stemmedSearchedTerms = Arrays.stream(searchedTerms)
+                    .map(term -> {
+                        String stemmedWord = stemWord(term);
+                        // Check for corrections
+                        String correctedTerm = suggestionCorrectionIfNecessary(stemmedWord, term);
+                        // If correctedTerm is not empty, it means the word was corrected
+                        return !correctedTerm.isEmpty() ? correctedTerm : stemmedWord;
+                    })
+                    .collect(Collectors.toList());
 
-        String insertedSearchedTerms = String.join(",", Collections.nCopies(searchedTermsCount, "?"));
-        String insertedLanguages = String.join(",", Collections.nCopies(languages.size(), "?"));
+            String insertedSearchedTerms = String.join(",", Collections.nCopies(searchedTermsCount, "?"));
+            String insertedLanguages = String.join(",", Collections.nCopies(languages.size(), "?"));
+            String scoreExpression = "SUM(tfidf)";
+            if ("BM25".equalsIgnoreCase(scoreOption)) {
+                scoreExpression = "SUM(bm25)";
+            }
 
-        // Default  TFIDF
-        String scoreExpression = "SUM(tfidf)";
-        if ("BM25".equalsIgnoreCase(scoreOption)) {
-            scoreExpression = "SUM(bm25)";
+            String disjunctiveQuery =
+                    "SELECT d.docid, d.url, f.score AS score " +
+                            "FROM documents d " +
+                            "JOIN (" +
+                            "   SELECT docid, " + scoreExpression + " AS score " +
+                            "   FROM features " +
+                            "   WHERE term IN (" + insertedSearchedTerms + ") " +
+                            "   GROUP BY docid " +
+                            ") f " +
+                            "ON d.docid = f.docid " +
+                            "WHERE d.lang IN (" + insertedLanguages + ") " +
+                            "ORDER BY f.score DESC " +
+                            "LIMIT ?";
+
+            try (PreparedStatement preparedStatement = connection.prepareStatement(disjunctiveQuery)) {
+                int parameterIndex = 1;
+
+                for (String term : stemmedSearchedTerms) {
+                    preparedStatement.setString(parameterIndex++, term);
+                }
+                for (String lang : languages) {
+                    preparedStatement.setString(parameterIndex++, lang);
+                }
+
+                preparedStatement.setInt(parameterIndex, resultSize);
+
+                ResultSet resultSet = preparedStatement.executeQuery();
+                while (resultSet.next()) {
+                    int foundDocid = resultSet.getInt("docid");
+                    String foundDocURL = resultSet.getString("url");
+                    int foundDocScore = resultSet.getInt("score");
+
+                    foundItems.add(new SearchResult(foundDocid, foundDocURL, foundDocScore));
+                }
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
+
         }
-
-        String disjunctiveQuery =
-                "SELECT d.docid, d.url, f.score AS score " +
-                        "FROM documents d " +
-                        "JOIN (" +
-                        "   SELECT docid, " + scoreExpression + " AS score " +
-                        "   FROM features " +
-                        "   WHERE term IN (" + insertedSearchedTerms + ") " +
-                        "   GROUP BY docid " +
-                        ") f " +
-                        "ON d.docid = f.docid " +
-                        "WHERE d.lang IN (" + insertedLanguages + ") " +
-                        "ORDER BY f.score DESC " +
-                        "LIMIT ?";
-
-        try (PreparedStatement preparedStatement = connection.prepareStatement(disjunctiveQuery)) {
-            int parameterIndex = 1;
-
-            for (String term : stemmedSearchedTerms) {
-                preparedStatement.setString(parameterIndex++, term);
-            }
-            for (String lang : languages) {
-                preparedStatement.setString(parameterIndex++, lang);
-            }
-
-            preparedStatement.setInt(parameterIndex, resultSize);
-
-            ResultSet resultSet = preparedStatement.executeQuery();
-            while (resultSet.next()) {
-                int foundDocid = resultSet.getInt("docid");
-                String foundDocURL = resultSet.getString("url");
-                int foundDocScore = resultSet.getInt("score");
-
-                foundItems.add(new SearchResult(foundDocid, foundDocURL, foundDocScore));
-            }
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        }
-
         return foundItems;
 }
 
     // Queries For Exercise 4
-    public JSONArray computeStat(String[] searchedTerms ) {
+    public JSONArray computeStat(String[] conjunctiveSearchedTerms, String[] disjunctiveSearchedTerms ) {
         JSONArray statArray = new JSONArray();
         String query = "SELECT  COUNT(docid) AS df FROM features WHERE term = ? ";
 
-        List<String> stemmedSearchedTerms = Arrays.stream(searchedTerms)
+        List<String> totalSearchResult = Stream.concat(
+                Arrays.stream(conjunctiveSearchedTerms),
+                Arrays.stream(disjunctiveSearchedTerms)
+        ).collect(Collectors.toList());
+
+
+        List<String> stemmedSearchedTerms = totalSearchResult.stream()
                 .map(term -> stemWord(term))
                 .collect(Collectors.toList());
 
@@ -425,13 +460,13 @@ public class DBConnection {
 
                 if (resultSet.next()) {
                     JSONObject termObject = new JSONObject();
-                    termObject.put("term", searchedTerms[i]);
+                    termObject.put("term", totalSearchResult.get(i));
                     termObject.put("df", resultSet.getInt("df"));
                     statArray.put(termObject);
                 } else {
                     // If the term does not exist in any document, set df to 0
                     JSONObject termObject = new JSONObject();
-                    termObject.put("term", searchedTerms[i]);
+                    termObject.put("term", totalSearchResult.get(i));
                     termObject.put("df", 0);
                     statArray.put(termObject);
                 }
