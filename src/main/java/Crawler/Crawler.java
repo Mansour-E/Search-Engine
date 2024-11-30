@@ -68,11 +68,27 @@ public class Crawler {
 
             URLDepthPair urlDepthPair = urlQueue.poll();
             String url = urlDepthPair.url;
-            db.updateCrawledPageState(url, 1);
-            visitedPages.add(url);
-            crawledUrlCount++;
+            // Check if page is already visited
+            if (visitedPages.contains(url)) {
+                System.out.println("Crawler.java: URL " + url + " is already visited. Skipping.");
+                continue;
+            }
+            // Check if the URL exceeds depth
+            else if (urlDepthPair.depth > depthToCrawl) {
+                System.out.println("Crawler.java: " + url + " exceeds maximum crawl depth. Skipping.");
+                continue;
+            }
+            // Check if the URL is allowed to crawl
+            else if (!isUrlAllowedToCrawl(url)) {
+                System.out.println("Crawler.java: " + url + " not allowed to crawl. Skipping.");
+                continue;
+            }else{
+                db.updateCrawledPageState(url, 1);
+                visitedPages.add(url);
+                crawledUrlCount++;
+                crawlPage(urlDepthPair);
+            }
 
-            crawlPage(urlDepthPair);
         }
 
     }
@@ -84,21 +100,6 @@ public class Crawler {
         String lang = urlDepthPair.lang;
         System.out.println("Crawling URL: " + url + " at depth: " + depth);
 
-        // Check if page is already visited
-        if (visitedPages.contains(url)) {
-            System.out.println("URL " + url + " is already visited. Skipping.");
-            return;
-        }
-        // Check if the URL exceeds depth
-        if (depth > depthToCrawl) {
-            System.out.println("URL " + url + " exceeds maximum crawl depth. Skipping.");
-            return;
-        }
-        // Check if the URL is allowed to crawl
-        if (!isUrlAllowedToCrawl(url)) {
-            return;
-        }
-
         // Fetch the page content
         XhtmlConverter xhtmlConverter = new XhtmlConverter(url);
         String htmlContent = xhtmlConverter.convertToXHML();
@@ -107,14 +108,14 @@ public class Crawler {
         if(lang.equals("Unknown")) {
             lang = classifier.checkForLanguage(htmlContent);
             urlDepthPair.insertLang(lang);
-            System.out.println( "lang" + urlDepthPair.lang);
         }
+
 
         // Create document in the database In case of root url
         String crawledDate = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
         if (docId == -1 ) {
             // Insert the document With the correct lang
-            System.out.println(" url" + url + " lang " + lang);
+            System.out.println("crawler.js: insert url " + url + " with lang " + lang);
             docId = db.insertDocument(url, crawledDate, lang);
         }else {
             // Update document visited state

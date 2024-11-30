@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Scanner;
 
 import static CommandInterface.commandInterface.executeSearch;
@@ -28,10 +29,15 @@ public class Main {
         DBConnection db = new DBConnection("IS-Project", "postgres", "Yessin.10", true);
 
         String[] rootUrls = new String[]{"https://www.cs.rptu.de/en/studium/studiengaenge/bm-inf/sp.ma/", "https://rptu.de"};
-        Crawler crawler = new Crawler( db, rootUrls , 2, 2, false );
+        Crawler crawler = new Crawler( db, rootUrls , 2, 3, false );
         crawler.crawl();
-        // String[] test = new String[]{"student", "study"};
-        // executeSearch(db, test,false, 9 );
+        // String[] conjuctiveTerms = new String[]{"student", "study"};
+        // String[] disjuctiveTerms = new String[]{};
+        // String[] languages = new String[]{"English"};
+        // db.disjunctiveCrawling(test, 5, List.of(languages))
+
+
+        // db.searchCrawling(conjuctiveTerms, disjuctiveTerms, 5 , List.of(languages) ) ;
 
         // End exercice1
 

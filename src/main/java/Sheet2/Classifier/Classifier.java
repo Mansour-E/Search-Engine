@@ -68,7 +68,6 @@ public class Classifier {
 
     public String checkForLanguage(String htmlContent) {
 
-        System.out.println("############################################################");
         if (htmlContent == null || htmlContent.trim().isEmpty()) {
             return "Unknown";
         }
@@ -81,8 +80,6 @@ public class Classifier {
 
         for (Element element : bodyContent) {
             String[] terms = element.text().split("\\W+");
-            System.out.println("term" + Arrays.toString(terms));
-
             for (String term : terms) {
                 if (englishWords.contains(term)) {
                     englishMatches++;
@@ -91,8 +88,8 @@ public class Classifier {
                     germanMatches++;
                 }
             }
-            System.out.println("englishMatches" + englishMatches);
-            System.out.println("germanMatches" + germanMatches);
+            // System.out.println("englishMatches" + englishMatches);
+            // System.out.println("germanMatches" + germanMatches);
 
             // Calculate confidence
             double totalMatches = englishMatches + germanMatches;
