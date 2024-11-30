@@ -74,7 +74,7 @@ public class Crawler {
 
             crawlPage(urlDepthPair);
         }
-
+        db.reCompute();
     }
 
     private void crawlPage(URLDepthPair urlDepthPair) throws IOException {

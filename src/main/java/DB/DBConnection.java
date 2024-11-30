@@ -133,8 +133,6 @@ public class DBConnection {
             ResultSet resultSet = preparedStatement.executeQuery();
             if (resultSet.next()) {
                 int docid = resultSet.getInt("docid");
-                // System.out.println("Document " + docid + " is inserted");
-                reCompute(); // Aktualisiere TF, IDF und TF*IDF nach dem Hinzufügen eines neuen Dokuments
                 return docid;
             }
         } catch (SQLException e) {
@@ -283,8 +281,6 @@ public class DBConnection {
 
         try (PreparedStatement stmt = connection.prepareStatement(updateIDFQuery);
              Statement totalDocsStmt = connection.createStatement()) {
-
-            // Berechne die Gesamtzahl der Dokumente
             ResultSet rs = totalDocsStmt.executeQuery("SELECT COUNT(*) AS total_documents FROM documents");
             int totalDocuments = rs.next() ? rs.getInt("total_documents") : 1; // Vermeide Division durch Null
 
@@ -305,7 +301,7 @@ public class DBConnection {
         try (Statement stmt = connection.createStatement()) {
             stmt.executeUpdate(updateTFIDFQuery);
         } catch (SQLException e) {
-            System.err.println("Fehler bei der Berechnung des TF*IDF-Werts: " + e.getMessage());
+            System.err.println("failed to Calculating the TF*IDF: " + e.getMessage());
             e.printStackTrace();
         }
     }
@@ -320,7 +316,7 @@ public class DBConnection {
             System.out.println("calculate BM25...");
             calculateBM25InDatabase();
         } catch (SQLException e) {
-            System.err.println("Fehler bei der Recomputierung: " + e.getMessage());
+            System.err.println("Failed to Recomputing: " + e.getMessage());
             e.printStackTrace();
         }
     }
@@ -683,13 +679,13 @@ public class DBConnection {
 // Exercise 2
 
     public void calculateBM25InDatabase() throws SQLException {
-        // Schritt 1: Berechne den PageRank-Wert mit calculatePageRanking()
-        System.out.println("Berechne PageRank-Werte...");
+        //Step 1: Calculate the PageRank value using calculatePageRanking()
+        System.out.println("Calculate PageRank values...");
         PageRank pr = new PageRank();
         pr.calculatePageRanking(this);
 
-        // Schritt 2: BM25-Werte berechnen und aktualisieren
-        System.out.println("Berechne BM25-Werte und kombiniere mit PageRank...");
+        // Step 2: Calculate and update BM25 values
+        System.out.println("Calculate BM25 values and combine with PageRank...");
 
         String bm25UpdateQuery = """
         WITH bm25_scores AS (
@@ -710,9 +706,9 @@ public class DBConnection {
            SELECT\s
                bm25.docid,
                bm25.term,
-               bm25.bm25 + COALESCE(d.pagerank, 0) AS combined_score  -- PageRank aus der 'documents'-Tabelle
+               bm25.bm25 + COALESCE(d.pagerank, 0) AS combined_score  
            FROM bm25_scores bm25
-           LEFT JOIN documents d ON bm25.docid = d.docid  -- PageRank-Wert direkt aus der 'documents'-Tabelle holen
+           LEFT JOIN documents d ON bm25.docid = d.docid  
        )
        UPDATE features
        SET bm25 = combined_scores.combined_score
@@ -725,7 +721,7 @@ public class DBConnection {
             ps.executeUpdate();
         }
 
-        System.out.println("BM25-Werte erfolgreich mit PageRank kombiniert und aktualisiert.");
+        System.out.println("BM25 values successfully combined with PageRank and updated.");
     }
 
 
@@ -781,7 +777,7 @@ public class DBConnection {
             stmt.executeUpdate(addBM25Column);
             System.out.println("BM25-Score column added to Features Table");
         } catch (SQLException e) {
-            System.err.println("Fehler beim Erstellen der BM25-Tabellen: " + e.getMessage());
+            System.err.println("Error while creating BM25 tables: " + e.getMessage());
             e.printStackTrace();
         }
     }

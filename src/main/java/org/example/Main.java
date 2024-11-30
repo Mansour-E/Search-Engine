@@ -29,9 +29,9 @@ public class Main {
         // Start exercice1
         DBConnection db = new DBConnection("IS-Project", "postgres", "9157", true);
 
-        //String[] rootUrls = new String[]{"https://www.cs.rptu.de/en/studium/studiengaenge/bm-inf/sp.ma/", "https://rptu.de"};
-        //Crawler crawler = new Crawler( db, rootUrls , 2, 2, false );
-        //crawler.crawl();
+        String[] rootUrls = new String[]{"https://www.cs.rptu.de/en/studium/studiengaenge/bm-inf/sp.ma/", "https://rptu.de"};
+        Crawler crawler = new Crawler( db, rootUrls , 2, 2, false );
+        crawler.crawl();
 
         String[] test = new String[]{"student", "study"};
         List<String> languages = List.of("English");
