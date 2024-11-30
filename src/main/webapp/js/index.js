@@ -1,4 +1,45 @@
 $(function() {
+
+    function parseSearchQuery(query) {
+        // Matches 'site:example.com'
+        const siteRegex = /site:([^\s]+)/g;
+        // Matches "term"
+        const quotedRegex = /"([^"]+)"/g;
+
+        const sites = [];
+        const quotedTerms = [];
+        const unquotedTerms = [];
+
+        // Extract sites
+        let match;
+        while ((match = siteRegex.exec(query)) !== null) {
+            sites.push(match[1]);
+        }
+
+        // Extract quoted terms
+        while ((match = quotedRegex.exec(query)) !== null) {
+            quotedTerms.push(match[1]);
+        }
+
+       // Filter out terms that are part of site or quoted regex matches
+       for (let term of query.split(/\s+/)) {
+           if (!term.startsWith('"') && !term.startsWith('site:') && term.trim() !== '') {
+               unquotedTerms.push(term);
+           }
+       }
+
+        console.log('sites' , sites)
+        console.log('quotedTerms' , quotedTerms)
+        console.log('unquotedTerms' , unquotedTerms)
+
+
+        return {
+            sites,
+            quotedTerms,
+            unquotedTerms,
+        };
+    }
+
     function displayResults(response) {
         console.log("displayResults", response)
         $("#resultsContainer").empty();
@@ -25,6 +66,9 @@ $(function() {
     }
 
     $("button").on("click", function(event) {
+
+        const parsedQuery = parseSearchQuery($("#searchQuery").val());
+
         event.preventDefault()
         const k = 20;
         let  languages = $("#langBox .form-check-input:checked").map(function() {
@@ -34,14 +78,15 @@ $(function() {
         if (languages.length == 0) {
            languages = ['English', "German"]
         }
-        console.log("languages", languages)
-
         const query = {
-            searchTerms: $("#searchQuery").val().trim().split(/\s+/),
-            domainSiteTerms: $("#siteQuery").val().trim().split(/\s+/),
+            conjuctiveSearchTerms: parsedQuery.quotedTerms,
+            disjunctiveSearchTerms: parsedQuery.unquotedTerms,
+            domainSiteTerms: parsedQuery.sites,
             isConjunctive: $("#conjunctiveCheck").is(":checked"),
             languages: languages
         };
+
+        console.log('query', query)
 
         $.ajax({
             method: 'GET',
@@ -56,6 +101,7 @@ $(function() {
                 console.log(e)
             }
         })
+
 
     });
 });

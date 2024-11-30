@@ -10,6 +10,7 @@ import org.la4j.vector.dense.BasicVector;
 import java.sql.*;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static Indexer.Parser.stemWord;
 
@@ -317,6 +318,38 @@ public class DBConnection {
 
 
     // Queries For Exercise 3
+    public List<SearchResult> searchCrawling(String[] conjunctiveSearchedTerms, String[] disjunctiveSearchedTerms, int resultSize, List<String> languages) {
+
+        // Step 1: Retrieve results for conjunctive and disjunctive terms
+        List<SearchResult> foundConjunctiveSearchedTerms = conjuntiveCrawling(conjunctiveSearchedTerms, resultSize, languages);
+        List<SearchResult> foundDisjunctiveSearchedTerms = disjunctiveCrawling(disjunctiveSearchedTerms, resultSize, languages);
+
+        // Step 2: Combine the results into one list
+        List<SearchResult> totalSearchResult = Stream.concat(foundConjunctiveSearchedTerms.stream(), foundDisjunctiveSearchedTerms.stream())
+                .collect(Collectors.toList());
+
+        // Step 3: Sort the combined results by score in descending order
+        List<SearchResult> sortedSearchResult = totalSearchResult.stream()
+                .sorted((result1, result2) -> Double.compare(result2.getScore(), result1.getScore()))
+                .collect(Collectors.toList());
+
+        // Step 4: Deduplicate and limit the results
+        Set<String> seenUrls = new HashSet<>();
+        List<SearchResult> finalSearchResults = new ArrayList<>();
+
+        for (SearchResult result : sortedSearchResult) {
+            if (seenUrls.size() >= resultSize) {
+                break;
+            }
+            if (!seenUrls.contains(result.getUrl())) {
+                seenUrls.add(result.getUrl());
+                finalSearchResults.add(result);
+            }
+        }
+
+        return finalSearchResults;
+    }
+
     public List<SearchResult> conjuntiveCrawling (String[] searchedTerms, int resultSize, List<String> languages) {
         int searchedTermsCount = searchedTerms.length;
         List<SearchResult> foundItems = new ArrayList<>();
@@ -378,7 +411,6 @@ public class DBConnection {
         return foundItems;
     }
 
-
     public List<SearchResult> disjunctiveCrawling(String[] searchedTerms, int resultSize, List<String> languages) {
         List<SearchResult> foundItems = new ArrayList<>();
         int searchedTermsCount = searchedTerms.length;
@@ -439,11 +471,17 @@ public class DBConnection {
 
 
     // Queries For Exercise 4
-    public JSONArray computeStat(String[] searchedTerms ) {
+    public JSONArray computeStat(String[] conjunctiveSearchedTerms, String[] disjunctiveSearchedTerms ) {
         JSONArray statArray = new JSONArray();
         String query = "SELECT  COUNT(docid) AS df FROM features WHERE term = ? ";
 
-        List<String> stemmedSearchedTerms = Arrays.stream(searchedTerms)
+        List<String> totalSearchResult = Stream.concat(
+                Arrays.stream(conjunctiveSearchedTerms),
+                Arrays.stream(disjunctiveSearchedTerms)
+        ).collect(Collectors.toList());
+
+
+        List<String> stemmedSearchedTerms = totalSearchResult.stream()
                 .map(term -> stemWord(term))
                 .collect(Collectors.toList());
 
@@ -456,13 +494,13 @@ public class DBConnection {
 
                 if (resultSet.next()) {
                     JSONObject termObject = new JSONObject();
-                    termObject.put("term", searchedTerms[i]);
+                    termObject.put("term", totalSearchResult.get(i));
                     termObject.put("df", resultSet.getInt("df"));
                     statArray.put(termObject);
                 } else {
                     // If the term does not exist in any document, set df to 0
                     JSONObject termObject = new JSONObject();
-                    termObject.put("term", searchedTerms[i]);
+                    termObject.put("term", totalSearchResult.get(i));
                     termObject.put("df", 0);
                     statArray.put(termObject);
                 }
