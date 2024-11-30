@@ -76,13 +76,17 @@ public class Parser {
         Elements linksContent = doc.selectXpath("/html/body//a");
         for (Element element : linksContent) {
             String link = element.attr("href");
-            if (isValidUrl(link) && !visitedPages.contains(link) ) {
+            if(visitedPages.contains(link)) {
+                System.out.println("visitedPages"+ visitedPages);
+                System.out.println("Parser.java: URl " + link + " is already visited. Skipping");
+            } else if (!isValidUrl(link)) {
+                // System.out.println("Parser.java: URl " + link + " is not valid visited. Skipping");
+            }else {
                 // Clean the Link: I remove it, because it takes a lot of time.
                 // String cleanedLink = UrlCleaner.unshortenUrl(link);
                 linkElements.add(link);
-            }else {
-                System.out.println("Parser.java: URl " + link + " is already visited or not valid. Skipping");
             }
+
         }
 
         return linkElements;
