@@ -8,7 +8,7 @@
 <ul> The function createLinkMatrix performs this initialization:
   <li> It queries the database to fetch all documents and their outgoing links.
   <li> For each document, it maps its unique ID to an index in the matrix.
- <li> If a document has no outgoing links (a "dangling node"), its teleportation probability is evenly distributed across all other nodes.
+ <li> If a document has no outgoing links, its teleportation probability is evenly distributed across all other nodes.
  <li> Otherwise, it calculates the link probability for each outgoing link and combines it with the teleportation probability.
 </ul>
 
