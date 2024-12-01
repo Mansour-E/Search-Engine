@@ -88,8 +88,6 @@ public class Classifier {
                     germanMatches++;
                 }
             }
-            // System.out.println("englishMatches" + englishMatches);
-            // System.out.println("germanMatches" + germanMatches);
 
             // Calculate confidence
             double totalMatches = englishMatches + germanMatches;
