@@ -25,10 +25,11 @@ public class Main {
 
         DBConnection db = new DBConnection("IS-Project", "postgres", "Yessin.10", true);
 
+
         String[] rootUrls = new String[]{"https://www.cs.rptu.de/en/studium/studiengaenge/bm-inf/sp.ma/", "https://rptu.de"};
         Crawler crawler = new Crawler( db, rootUrls , 2, 2, false );
         crawler.crawl();
-
+ /*
         String[] conjuctiveSearchTerms = new String[]{"study"};
         String[] disjunctiveSearchTerms = new String[]{"student"};
 
@@ -40,6 +41,7 @@ public class Main {
         for (SearchResult result : results) {
             System.out.printf("DocID: %d, URL: %s, Score: %.4f%n", result.getDocID(), result.getUrl(), result.getScore());
         }
+         */
 
         /*-----------------------------------------------------------------------------------------------------
         -----------------------sheet 2 -------------------------------------------------------------------------
@@ -47,8 +49,8 @@ public class Main {
          */
 
         // THIS PART BELONGS TO EXERCISE  1
-        // PageRank pr = new PageRank();
-        // pr.calculatePageRanking(db);
+        PageRank pr = new PageRank();
+        pr.calculatePageRanking(db);
 
     }
 

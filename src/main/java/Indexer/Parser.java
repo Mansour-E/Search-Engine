@@ -77,13 +77,14 @@ public class Parser {
         for (Element element : linksContent) {
             String link = element.attr("href");
             if(visitedPages.contains(link)) {
-                System.out.println("visitedPages"+ visitedPages);
                 System.out.println("Parser.java: URl " + link + " is already visited. Skipping");
-            } else if (!isValidUrl(link)) {
+            }
+            else if (!isValidUrl(link)) {
                 // System.out.println("Parser.java: URl " + link + " is not valid visited. Skipping");
             }else {
                 // Clean the Link: I remove it, because it takes a lot of time.
                 // String cleanedLink = UrlCleaner.unshortenUrl(link);
+
                 linkElements.add(link);
             }
 

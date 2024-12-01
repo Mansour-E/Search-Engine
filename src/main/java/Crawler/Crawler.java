@@ -25,8 +25,10 @@ public class Crawler {
     int crawledUrlCount = 0;
     Queue<URLDepthPair> urlQueue = new LinkedList<>();
     Set<String> visitedPages = new HashSet<>();
+    Set<String> allUrlsInDB = new HashSet<>();
     ExecutorService threadPool;
     Classifier classifier ;
+    String[] rootUrls;
 
     public Crawler(DBConnection db, String[] rootUrls , int depthToCrawl, int nbrToCrawl, Boolean allowToLeaveDomains) throws IOException {
         this.db = db;
@@ -35,13 +37,18 @@ public class Crawler {
         this.allowToLeaveDomains = allowToLeaveDomains;
         this.threadPool = Executors.newFixedThreadPool(10);
         this.classifier = new Classifier();
+        this.rootUrls = rootUrls;
 
         // Load visited Pages
         loadVisitedURl();
         System.out.println("visitedPages" + visitedPages);
 
+        // getAllURls
+        loadAllURlsInDB();
+
         // Load existing state from the database if the crawler was interrupted
         // loadNotVisitedURL();
+
 
         // If the system was not interrupted, initialize the queue with root URLs
         if (urlQueue.isEmpty()) {
@@ -58,6 +65,14 @@ public class Crawler {
         List<URLDepthPair> queuedUrls = db.getQueuedUrls();
         urlQueue.addAll(queuedUrls);
     }
+
+    private void loadAllURlsInDB () {
+        Set<String> notVisitedURLSButExist = db.getAllURLS();
+        allUrlsInDB.addAll(notVisitedURLSButExist);
+        // this could be improved
+        allUrlsInDB.addAll(Arrays.asList(rootUrls));
+    }
+
     private void loadVisitedURl() {
         Set<String> previousVisitedUrls = db.getVisitedUrls();
         visitedPages.addAll(previousVisitedUrls);
@@ -124,7 +139,7 @@ public class Crawler {
         }
 
         // Index the page using the Indexer
-        Indexer indexer = new Indexer(db, htmlContent, docId, visitedPages, lang);
+        Indexer indexer = new Indexer(db, htmlContent, docId, visitedPages, allUrlsInDB, lang);
         indexer.indexHTMlContent();
 
         // Add child links to the queue for further crawling

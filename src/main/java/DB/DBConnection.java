@@ -155,10 +155,6 @@ public class DBConnection {
         }
     }
 
-    public DBConnection() {
-        this.connection = connection;
-    }
-
     public List<URLDepthPair> getQueuedUrls() {
         List<URLDepthPair> queuedUrls = new ArrayList<>();
         String query = "SELECT id, url, depth FROM crawledPagesQueueTable WHERE state = 0 ORDER BY depth ASC";
@@ -170,6 +166,20 @@ public class DBConnection {
                 int depth = rs.getInt("depth");
                 // Unknown because they have not yet crawled
                 queuedUrls.add(new URLDepthPair(id, url, depth, "Unknown"));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return queuedUrls;
+    }
+    public Set<String> getAllURLS() {
+        Set<String> queuedUrls = new HashSet<>();
+        String query = "SELECT docid FROM documents";
+        try (Statement stmt = connection.createStatement();
+             ResultSet rs = stmt.executeQuery(query)) {
+            while (rs.next()) {
+                String url = rs.getString("docid");
+                queuedUrls.add(url);
             }
         } catch (SQLException e) {
             e.printStackTrace();
@@ -513,14 +523,14 @@ public class DBConnection {
         }
     }
     public Matrix createLinkMatrix(double tp) {
-        String uniqueDocsQuery = "SELECT DISTINCT docid FROM documents ORDER BY docid";
+        String getDocsQuery = "SELECT docid FROM documents ORDER BY docid";
         String linksQuery = "SELECT from_docid, to_docid FROM links";
         Map<Integer, List<Integer>> linkMap = new HashMap<>();
         int n = 0;
 
         // Map docids to indexes
         try (Statement stmt = connection.createStatement();
-             ResultSet rs = stmt.executeQuery(uniqueDocsQuery)) {
+             ResultSet rs = stmt.executeQuery(getDocsQuery)) {
             while (rs.next()) {
                 int docId = rs.getInt("docid");
                 docIdToIndex.put(docId, n);
@@ -557,7 +567,7 @@ public class DBConnection {
             if (outDegree == 0) {
                 // Dangling node: distribute teleportation probability equally across all nodes
                 for (int j = 0; j < n; j++) {
-                    linkMatrix.set(j, i, teleportationProb);
+                    linkMatrix.set(i, j, teleportationProb);
                 }
             } else {
                 // Page with outgoing links: apply both link probability and teleportation probability
@@ -565,10 +575,10 @@ public class DBConnection {
                 for (int j = 0; j < n; j++) {
                     if (outgoingLinks.contains(j)) {
                         // Link probability + teleportation probability
-                        linkMatrix.set(j, i, linkProb + teleportationProb);
+                        linkMatrix.set(i, j, linkProb + teleportationProb);
                     } else {
                         // Teleportation probability only
-                        linkMatrix.set(j, i, teleportationProb);
+                        linkMatrix.set(i, j, teleportationProb);
                     }
                 }
             }

@@ -26,7 +26,7 @@ public class PageRank {
         /*
         Vector firstRow = linkMatrix.getRow(0);
         for (int i = 0; i < firstRow.length(); i++) {
-            // System.out.printf("%.4f ", firstRow.get(i));
+            // System.out.println(firstRow.get(i));
         }
            for (int i = 0; i < rank.length(); i++) {
             System.out.printf("rank" + rank.get(i));

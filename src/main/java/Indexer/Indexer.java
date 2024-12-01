@@ -26,11 +26,12 @@ public class Indexer {
     Classifier classifier;
     String lang;
     Set<String> visitedPages;
+    Set<String> allUrlsInDB;
 
     List<String> linkElements;
     HashMap<Integer, String> linkAndDocIdElements = new HashMap<Integer, String>();
 
-    public Indexer(DBConnection db, String htmlContent, int docId,Set<String> visitedPages, String lang) throws IOException {
+    public Indexer(DBConnection db, String htmlContent, int docId,Set<String> visitedPages, Set<String> allUrlsInDB,  String lang) throws IOException {
         this.db = db;
         this.htmlContent = htmlContent;
         this.parser = new Parser(htmlContent);
@@ -38,6 +39,7 @@ public class Indexer {
         this.lang = lang;
         this.rootDocID = docId;
         this.visitedPages = visitedPages;
+        this.allUrlsInDB = allUrlsInDB;
     }
 
 
@@ -56,10 +58,13 @@ public class Indexer {
 
         // Insert links into documents and links tables
         for (String link : parsedLinks) {
-            // Bug come from here . i must check if the url is the DB or Not ?
-            int docId = db.insertDocument(link, createdDate, "Unknown");
-            db.insertLink(rootDocID, docId);
-            linkAndDocIdElements.put(docId, link);
+            if(!allUrlsInDB.contains(link)) {
+                int docId = db.insertDocument(link, createdDate, "Unknown");
+                db.insertLink(rootDocID, docId);
+                linkAndDocIdElements.put(docId, link);
+                allUrlsInDB.add(link);
+            }
+
         }
     }
 
