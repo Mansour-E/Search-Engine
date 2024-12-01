@@ -30,3 +30,15 @@
 <p> We calculate the number of English and German words represented in the document.
 <p> If we reach our satisfaction threshold, we assign the document to the corresponding language.
 <p> Otherwise, we loop through the entire document and assign the language with the higher word count.
+
+<h1>Task 4 b </h1>
+<br>
+<br>
+
+In this task, I implemented the suggestionCorrectionIfNecessary function to check whether a given word exists in the database and suggest a correction if necessary.
+
+First, I check if the word is present in the term column of the features table. 
+If the word exists, no correction is made, and the function simply returns an empty string.
+If the word does not exist, I use the Levenshtein distance to find similar terms in the database.
+Finally, I retrieve the closest match, prioritizing terms with the highest frequency, and return it as the suggested correction.
+
