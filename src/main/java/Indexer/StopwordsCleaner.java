@@ -28,7 +28,7 @@ public class StopwordsCleaner {
     // This function loads stopwords
     private void loadStopwords() throws IOException {
         try {
-            List<String> lines = Files.readAllLines(Paths.get("src/main/java/Indexer/stopwords.txt"));
+            List<String> lines = Files.readAllLines(Paths.get("src/main/resources/englishStopwords.txt"));
             for (String line : lines) {
                 // Remove comments and trim whitespace
                 line = line.replaceAll(COMMENT_REGEX, "").trim();
@@ -44,7 +44,7 @@ public class StopwordsCleaner {
 
     private void loadGermanStopwords() throws IOException {
         try {
-            List<String> lines = Files.readAllLines(Paths.get("src/main/java/Indexer/germanStopwords.txt"));
+            List<String> lines = Files.readAllLines(Paths.get("src/main/resources/germanStopwords.txt"));
             for (String line : lines) {
                 line = line.trim();
                 if (!line.isEmpty()) {
