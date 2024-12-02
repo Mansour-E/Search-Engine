@@ -15,8 +15,8 @@ public class Classifier {
 
     private static final Set<String> englishWords = new HashSet<>();
     private static final Set<String> germanWords = new HashSet<>();
-    private String englishWordsFilePath = "src/main/resources/EnglishWords";
-    private String germanWordsFilePath = "src/main/resources/GermanWords";
+    private String englishWordsFilePath = "src/main/resources/EnglishWords.txt";
+    private String germanWordsFilePath = "src/main/resources/GermanWords.txt";
 
     // Initial number of terms to analyze
     private static final int MIN_TERMS = 20;
