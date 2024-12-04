@@ -17,7 +17,7 @@ import java.util.Set;
 import org.json.JSONObject;
 import org.json.JSONArray;
 
-@WebServlet("/search")
+
 public class SearchServlet extends HttpServlet {
 
     @Override
@@ -188,23 +188,11 @@ public class SearchServlet extends HttpServlet {
         }
 
         String scoreOption = jsonQuery.getString("scoreOption");
-
-
-        /*
-        if (isConjuctive) {
-            foundItems = db.conjuntiveCrawling(searchTerms, resultSize, List.of(langTerms));
-        } else {
-            foundItems = db.disjunctiveCrawling(searchTerms, resultSize, List.of(langTerms));
-        }
-         */
-
         foundItems = db.searchCrawling(conjuctiveSearchTerms, disjunctiveSearchTerms,resultSize, List.of(langTerms), scoreOption);
 
         if(foundItems.isEmpty()) {
             System.out.println("there are noterms that match these words");
         }
-
-        System.out.printf("allowedDomainsAndSites " + allowedDomainsAndSites);
         // create ResultList Object
         JSONArray resultList = new JSONArray();
         for (int i = 0; i < foundItems.size(); i++) {
@@ -215,8 +203,6 @@ public class SearchServlet extends HttpServlet {
             // Check if item URL is allowed
             if (!shouldAddItem) {
                 for (String allowedDomain : allowedDomainsAndSites) {
-                    System.out.printf("allowedDomain " +allowedDomain);
-
                     if (itemUrl.contains(allowedDomain)) {
                         shouldAddItem = true;
                         break;
@@ -226,12 +212,12 @@ public class SearchServlet extends HttpServlet {
 
             // If allowed, add item to result list
             if (shouldAddItem) {
+                Double score = foundItem.getScore();
                 JSONObject foundItemObject = new JSONObject();
                 foundItemObject.put("rank", i + 1);
                 foundItemObject.put("url", itemUrl);
-                foundItemObject.put("score", foundItem.getScore());
+                foundItemObject.put("score", score);
                 resultList.put(foundItemObject);
-                // System.out.println("rank " + (i + 1) + ": " + itemUrl + " (Score: " + foundItem.getScore() + ")");
             }
         }
         resultJson.put("resultList", resultList);
@@ -250,7 +236,6 @@ public class SearchServlet extends HttpServlet {
         //add cw term
         int cw = db.calcualteCW();
         resultJson.put("cw", cw);
-
 
         return resultJson;
     }

@@ -372,7 +372,7 @@ public class DBConnection {
                 while (resultSet.next()) {
                     int foundDocid = resultSet.getInt("docid");
                     String foundDocURL = resultSet.getString("url");
-                    int foundDocScore = resultSet.getInt("score");
+                    Double foundDocScore = resultSet.getDouble("score");
 
                     foundItems.add(new SearchResult(foundDocid,foundDocURL, foundDocScore ));
                 }
