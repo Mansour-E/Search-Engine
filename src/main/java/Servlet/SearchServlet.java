@@ -20,8 +20,19 @@ import org.json.JSONArray;
 
 public class SearchServlet extends HttpServlet {
 
+    private RateLimiter rateLimiter = new RateLimiter();
+
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        String clientIp = request.getRemoteAddr(); // take the IP from Clients
+
+        // Überprüfe, ob die Anfrage vom Client erlaubt ist
+        if (!rateLimiter.isAllowed(clientIp)) {
+            response.setStatus(429); // 429 Too Many Requests
+            response.getWriter().write("Rate limit exceeded. Please try again later.");
+            return; // Anfrage wird abgelehnt, da das Limit überschritten wurde
+        }
+
         System.out.println("hallo");
         String query = request.getParameter("query");
         System.out.println(query);
@@ -32,7 +43,7 @@ public class SearchServlet extends HttpServlet {
                 JSONObject jsonQuery = new JSONObject(query);
 
                 // Create connection with db
-                DBConnection db = new DBConnection("IS-Project", "postgres", "1234", false);
+                DBConnection db = new DBConnection("IS-Project", "postgres", "9157", false);
 
                 JSONObject resultList = this.executeSearch(db, jsonQuery, resultSize);
                 System.out.printf("resultList" +resultList);
