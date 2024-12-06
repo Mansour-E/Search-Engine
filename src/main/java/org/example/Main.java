@@ -23,7 +23,7 @@ public class Main {
         -------------------------------------------------------------------------------------------------------
          */
 
-        DBConnection db = new DBConnection("IS-Project", "postgres", "1234", true);
+        DBConnection db = new DBConnection("IS-Project", "postgres", "9157", true);
 
 
         String[] rootUrls = new String[]{"https://www.cs.rptu.de/en/studium/studiengaenge/bm-inf/sp.ma/", "https://rptu.de"};

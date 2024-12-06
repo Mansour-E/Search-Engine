@@ -86,13 +86,13 @@ $(function() {
         };
         $.ajax({
             method: 'GET',
-            url: '/webCrowler/search',
+            url: '/is-project/search',
             data: {query:  JSON.stringify(query), k:k},
             success: function(response) {
             if(displayOption === "jsonFile") {
                 // Redirect to the result page with the response as a query parameter
                 const encodedResult = encodeURIComponent(JSON.stringify(response));
-                window.location.href = `/webCrowler/resultPage.html?data=${encodedResult}`;
+                window.location.href = `/is-project/resultPage.html?data=${encodedResult}`;
             }else{
                 displayResults(response)
             }
