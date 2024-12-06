@@ -195,6 +195,7 @@ public class SearchServlet extends HttpServlet {
         }
         // create ResultList Object
         JSONArray resultList = new JSONArray();
+        int displayRankingCounter = 1;
         for (int i = 0; i < foundItems.size(); i++) {
             SearchResult foundItem = foundItems.get(i);
             String itemUrl = foundItem.getUrl();
@@ -214,10 +215,11 @@ public class SearchServlet extends HttpServlet {
             if (shouldAddItem) {
                 Double score = foundItem.getScore();
                 JSONObject foundItemObject = new JSONObject();
-                foundItemObject.put("rank", i + 1);
+                foundItemObject.put("rank", displayRankingCounter);
                 foundItemObject.put("url", itemUrl);
                 foundItemObject.put("score", score);
                 resultList.put(foundItemObject);
+                displayRankingCounter ++;
             }
         }
         resultJson.put("resultList", resultList);
