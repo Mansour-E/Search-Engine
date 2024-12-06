@@ -6,7 +6,7 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
-import java.io.*;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.*;
@@ -15,8 +15,8 @@ public class Classifier {
 
     private static final Set<String> englishWords = new HashSet<>();
     private static final Set<String> germanWords = new HashSet<>();
-    private String englishWordsFilePath = "EnglishWords.txt";
-    private String germanWordsFilePath = "GermanWords.txt";
+    private String englishWordsFilePath = "src/main/resources/EnglishWords.txt";
+    private String germanWordsFilePath = "src/main/resources/GermanWords.txt";
 
     // Initial number of terms to analyze
     private static final int MIN_TERMS = 20;
@@ -46,13 +46,9 @@ public class Classifier {
     }
 
     private void loadWordsFromFile(String filePath, String lang) throws IOException {
-        try (InputStream inputStream = getClass().getClassLoader().getResourceAsStream(filePath)) {
-            if (inputStream == null) {
-                throw new FileNotFoundException("File not found in resources: " + filePath);
-            }
-            BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
-            String line;
-            while ((line = reader.readLine()) != null) {
+        try {
+            List<String> lines = Files.readAllLines(Paths.get(filePath));
+            for (String line : lines) {
                 line = line.trim();
                 if (!line.isEmpty()) {
                     if (lang.equals("en")) {
@@ -69,7 +65,6 @@ public class Classifier {
             throw e;
         }
     }
-
 
     public String checkForLanguage(String htmlContent) {
 

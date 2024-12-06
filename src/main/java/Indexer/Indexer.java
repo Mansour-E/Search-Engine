@@ -71,12 +71,6 @@ public class Indexer {
     public HashMap<Integer, String> getLinks() {
         return linkAndDocIdElements;
     }
-
-    // In Indexer.java
-    public void calculateBM25() throws SQLException {
-        db.calculateBM25InDatabase();
-    }
-
 }
 
 

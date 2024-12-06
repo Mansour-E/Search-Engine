@@ -65,8 +65,6 @@ public class Parser {
             String link = element.attr("href");
             if (!visitedPages.contains(link) && isValidUrl(link)) {
                 linkElements.add(link);
-            } else {
-                System.out.println("Skipping invalid or visited URL: " + link);
             }
         }
         return linkElements;
