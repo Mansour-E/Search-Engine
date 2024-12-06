@@ -102,6 +102,7 @@ public class Classifier {
             }
         }
 
+        System.out.println("englishMatches+ "+ englishMatches+ " germanMatches" + germanMatches);
         // Final classification
         if (englishMatches > germanMatches) {
             return "English";

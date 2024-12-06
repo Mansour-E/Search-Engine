@@ -289,6 +289,7 @@ public class DBConnection {
             calculateIDF();
             calculateTFIDF();
             calculateBM25InDatabase();
+            System.out.println("calculate tfidf, Pageranking, BM25 ");
         } catch (SQLException e) {
             System.err.println("Failed to Recomputing: " + e.getMessage());
             e.printStackTrace();
@@ -517,7 +518,6 @@ public class DBConnection {
 
             statement = connection.createStatement();
             statement.executeUpdate(query);
-            System.out.println("pagerank column is added");
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
@@ -606,12 +606,10 @@ public class DBConnection {
 // Exercise 2
     public void calculateBM25InDatabase() throws SQLException {
         //Step 1: Calculate the PageRank value using calculatePageRanking()
-        System.out.println("Calculate PageRank values...");
         PageRank pr = new PageRank();
         pr.calculatePageRanking(this);
 
         // Step 2: Calculate and update BM25 values
-        System.out.println("Calculate BM25 values and combine with PageRank...");
 
         String bm25UpdateQuery = """
         WITH bm25_scores AS (
@@ -647,7 +645,6 @@ public class DBConnection {
             ps.executeUpdate();
         }
 
-        System.out.println("BM25 values successfully combined with PageRank and updated.");
     }
     public void createViews() {
         try (Statement stmt = connection.createStatement()) {
