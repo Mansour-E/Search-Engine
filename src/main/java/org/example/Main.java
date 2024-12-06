@@ -2,16 +2,16 @@ package org.example;
 
 import CommandInterface.SearchResult;
 import Crawler.Crawler;
+import Crawler.NightCrawler;
+
 import DB.DBConnection;
 import Sheet2.Classifier.Classifier;
 import Sheet2.PageRank.PageRank;
 
 import java.io.IOException;
 import java.sql.*;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
-import java.util.Scanner;
+
 
 import static CommandInterface.commandInterface.executeSearch;
 
@@ -23,13 +23,19 @@ public class Main {
         -------------------------------------------------------------------------------------------------------
          */
 
-        DBConnection db = new DBConnection("IS-Project", "postgres", "1234", true);
+        DBConnection db = new DBConnection("IS-Project", "postgres", "Yessin.10", true);
 
 
-        String[] rootUrls = new String[]{"https://www.cs.rptu.de/en/studium/studiengaenge/bm-inf/sp.ma/", "https://rptu.de"};
-        Crawler crawler = new Crawler( db, rootUrls , 2, 2, false );
-        crawler.crawl();
- /*
+        String[] rootUrls = new String[]{"http://sci.cs.uni-kl.de/",
+                "http://dekanat.cs.rptu.de/en/",  "https://rptu.de"};
+        Crawler crawler = new Crawler( db, rootUrls , 2, 10, true );
+        // crawler.crawl();
+
+        // NightCrawler nightCrawler = new NightCrawler( db, rootUrls, true  );
+        // nightCrawler.crawl();
+
+
+
         String[] conjuctiveSearchTerms = new String[]{"study"};
         String[] disjunctiveSearchTerms = new String[]{"student"};
 
@@ -41,7 +47,9 @@ public class Main {
         for (SearchResult result : results) {
             System.out.printf("DocID: %d, URL: %s, Score: %.4f%n", result.getDocID(), result.getUrl(), result.getScore());
         }
+        /*
          */
+
 
         /*-----------------------------------------------------------------------------------------------------
         -----------------------sheet 2 -------------------------------------------------------------------------
