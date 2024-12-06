@@ -24,14 +24,7 @@ public class SearchServlet extends HttpServlet {
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        String clientIp = request.getRemoteAddr(); // take the IP from Clients
 
-        // Überprüfe, ob die Anfrage vom Client erlaubt ist
-        if (!rateLimiter.isAllowed(clientIp)) {
-            response.setStatus(429); // 429 Too Many Requests
-            response.getWriter().write("Rate limit exceeded. Please try again later.");
-            return; // Anfrage wird abgelehnt, da das Limit überschritten wurde
-        }
 
         System.out.println("hallo");
         String query = request.getParameter("query");

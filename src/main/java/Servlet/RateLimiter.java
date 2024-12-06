@@ -4,7 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class RateLimiter {
-    private static final int MAX_GLOBAL_REQUESTS_PER_SECOND = 10; // Max 10 Anfragen pro Sekunde insgesamt
+ /*  private static final int MAX_GLOBAL_REQUESTS_PER_SECOND = 10; // Max 10 Anfragen pro Sekunde insgesamt
     private static final int MAX_REQUESTS_PER_SECOND_PER_IP = 1;  // Max 1 Anfrage pro Sekunde pro IP
 
     private Map<String, Long> lastRequestTime = new HashMap<>();
@@ -40,5 +40,5 @@ public class RateLimiter {
         // Anfragen zählen und erlauben
         globalRequestCount++;
         return true;
-    }
+    }*/
 }
