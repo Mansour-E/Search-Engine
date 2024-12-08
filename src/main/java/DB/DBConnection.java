@@ -386,31 +386,32 @@ public class DBConnection {
     }
     public List<SearchResult> disjunctiveCrawling(String[] searchedTerms, int resultSize, List<String> languages, String scoreOption) {
         List<SearchResult> foundItems = new ArrayList<>();
-        if(searchedTerms.length != 0) {
+        if (searchedTerms.length != 0) {
             int searchedTermsCount = searchedTerms.length;
             List<String> stemmedSearchedTerms = Arrays.stream(searchedTerms)
                     .map(term -> {
                         String stemmedWord = stemWord(term);
                         // Check for corrections
                         String correctedTerm = suggestionCorrectionIfNecessary(stemmedWord, term);
-                        // If correctedTerm is not empty, it means the word was corrected
                         return !correctedTerm.isEmpty() ? correctedTerm : stemmedWord;
                     })
                     .collect(Collectors.toList());
 
             String insertedSearchedTerms = String.join(",", Collections.nCopies(searchedTermsCount, "?"));
             String insertedLanguages = String.join(",", Collections.nCopies(languages.size(), "?"));
-            String scoreExpression = "SUM(tfidf)";
+
+            // Dynamic choice of View
+            String viewName = "features_tfidf";
             if ("BM25".equalsIgnoreCase(scoreOption)) {
-                scoreExpression = "SUM(bm25)";
+                viewName = "features_bm25";
             }
 
             String disjunctiveQuery =
                     "SELECT d.docid, d.url, f.score AS score " +
                             "FROM documents d " +
                             "JOIN (" +
-                            "   SELECT docid, " + scoreExpression + " AS score " +
-                            "   FROM features " +
+                            "   SELECT docid, SUM(score) AS score " +
+                            "   FROM " + viewName + " " +
                             "   WHERE term IN (" + insertedSearchedTerms + ") " +
                             "   GROUP BY docid " +
                             ") f " +
@@ -435,17 +436,17 @@ public class DBConnection {
                 while (resultSet.next()) {
                     int foundDocid = resultSet.getInt("docid");
                     String foundDocURL = resultSet.getString("url");
-                    int foundDocScore = resultSet.getInt("score");
+                    double foundDocScore = resultSet.getDouble("score");
 
                     foundItems.add(new SearchResult(foundDocid, foundDocURL, foundDocScore));
                 }
             } catch (SQLException e) {
                 throw new RuntimeException(e);
             }
-
         }
         return foundItems;
-}
+    }
+
 
     // Queries For Exercise 4
     public JSONArray computeStat(String[] conjunctiveSearchedTerms, String[] disjunctiveSearchedTerms ) {
