@@ -289,6 +289,7 @@ public class DBConnection {
             calculateIDF();
             calculateTFIDF();
             calculateBM25InDatabase();
+            createViews();
             System.out.println("calculate tfidf, Pageranking, BM25 ");
         } catch (SQLException e) {
             System.err.println("Failed to Recomputing: " + e.getMessage());
@@ -318,34 +319,35 @@ public class DBConnection {
         }
         return finalSearchResults;
     }
-    public List<SearchResult> conjuntiveCrawling (String[] searchedTerms, int resultSize, List<String> languages, String scoreOption) {
+    public List<SearchResult> conjuntiveCrawling(String[] searchedTerms, int resultSize, List<String> languages, String scoreOption) {
+        createViews();
         List<SearchResult> foundItems = new ArrayList<>();
-        if(searchedTerms.length != 0) {
+        if (searchedTerms.length != 0) {
             int searchedTermsCount = searchedTerms.length;
             List<String> stemmedSearchedTerms = Arrays.stream(searchedTerms)
                     .map(term -> {
                         String stemmedWord = stemWord(term);
                         // Check for corrections
                         String correctedTerm = suggestionCorrectionIfNecessary(stemmedWord, term);
-                        // If correctedTerm is not empty, it means the word was corrected
                         return !correctedTerm.isEmpty() ? correctedTerm : stemmedWord;
                     })
                     .collect(Collectors.toList());
 
-
             String insertedSearchedTerms = String.join(",", Collections.nCopies(searchedTermsCount, "?"));
             String insertedLanguages = String.join(",", Collections.nCopies(languages.size(), "?"));
-            String scoreExpression = "SUM(tfidf)";
+
+            // dynamic chioce
+            String viewName = "features_tfidf";
             if ("BM25".equalsIgnoreCase(scoreOption)) {
-                scoreExpression = "SUM(bm25)";
+                viewName = "features_bm25";
             }
 
             String conjunctiveQuery =
                     "SELECT d.docid, d.url, f.score AS score " +
                             "FROM documents d " +
                             "JOIN (" +
-                            "   SELECT docid, " + scoreExpression+ " AS score " +
-                            "   FROM features " +
+                            "   SELECT docid, SUM(score) AS score " +
+                            "   FROM " + viewName + " " +
                             "   WHERE term IN (" + insertedSearchedTerms + ") " +
                             "   GROUP BY docid " +
                             "   HAVING COUNT(DISTINCT term) = ? " +
@@ -367,15 +369,13 @@ public class DBConnection {
                 }
                 preparedStatement.setInt(parameterIndex, resultSize);
 
-
-
                 ResultSet resultSet = preparedStatement.executeQuery();
                 while (resultSet.next()) {
                     int foundDocid = resultSet.getInt("docid");
                     String foundDocURL = resultSet.getString("url");
                     Double foundDocScore = resultSet.getDouble("score");
 
-                    foundItems.add(new SearchResult(foundDocid,foundDocURL, foundDocScore ));
+                    foundItems.add(new SearchResult(foundDocid, foundDocURL, foundDocScore));
                 }
             } catch (SQLException e) {
                 throw new RuntimeException(e);
@@ -384,7 +384,9 @@ public class DBConnection {
 
         return foundItems;
     }
+
     public List<SearchResult> disjunctiveCrawling(String[] searchedTerms, int resultSize, List<String> languages, String scoreOption) {
+
         List<SearchResult> foundItems = new ArrayList<>();
         if (searchedTerms.length != 0) {
             int searchedTermsCount = searchedTerms.length;
@@ -419,6 +421,24 @@ public class DBConnection {
                             "WHERE d.lang IN (" + insertedLanguages + ") " +
                             "ORDER BY f.score DESC " +
                             "LIMIT ?";
+            /*String scoreExpression = "SUM(tfidf)";
+            if ("BM25".equalsIgnoreCase(scoreOption)) {
+                scoreExpression = "SUM(bm25)";
+            }
+
+            String disjunctiveQuery =
+                    "SELECT d.docid, d.url, f.score AS score " +
+                            "FROM documents d " +
+                            "JOIN (" +
+                            "   SELECT docid, " + scoreExpression + " AS score " +
+                            "   FROM features " +
+                            "   WHERE term IN (" + insertedSearchedTerms + ") " +
+                            "   GROUP BY docid " +
+                            ") f " +
+                            "ON d.docid = f.docid " +
+                            "WHERE d.lang IN (" + insertedLanguages + ") " +
+                            "ORDER BY f.score DESC " +
+                            "LIMIT ?";*/
 
             try (PreparedStatement preparedStatement = connection.prepareStatement(disjunctiveQuery)) {
                 int parameterIndex = 1;
@@ -650,7 +670,7 @@ public class DBConnection {
     public void createViews() {
         try (Statement stmt = connection.createStatement()) {
             // View zur schnellen Berechnung der Document Length (Summe der Term-Frequenzen)
-            String createDocumentLengthView = """
+           /* String createDocumentLengthView = """
             CREATE OR REPLACE VIEW document_length_view AS
             SELECT
                 docid,
@@ -669,7 +689,7 @@ public class DBConnection {
             FROM document_length_view;
         """;
             stmt.executeUpdate(createAverageLengthView);
-            System.out.println("Average Length View created");
+            System.out.println("Average Length View created");*/
 
             // View zur Berechnung der BM25-Score für jedes Dokument
             String features_bm25 = """
@@ -677,12 +697,8 @@ public class DBConnection {
             SELECT
                 f.docid,
                 f.term,
-                (f.tfidf / (f.tfidf + 1)) * 
-                (1.2 + 1) /
-                (1.2 * (1 - 0.75 + 0.75 * dl.document_length / al.average_length) + f.tfidf) AS bm25_score
-            FROM features f
-            JOIN document_length_view dl ON f.docid = dl.docid
-            JOIN average_length_view al ON 1=1;
+                f.bm25 AS score
+            FROM features f;
         """;
             stmt.executeUpdate(features_bm25);
             System.out.println("BM25 View created");
@@ -692,7 +708,7 @@ public class DBConnection {
                             SELECT\s
                                 docid,\s
                                 term,\s
-                                tfidf AS tfidf_score
+                                tfidf AS score
                             FROM features;
                     """;
             stmt.executeUpdate(features_tfidf);

@@ -23,20 +23,21 @@ public class Main {
         -------------------------------------------------------------------------------------------------------
          */
 
-        DBConnection db = new DBConnection("IS-Project", "postgres", "1234", true);
+        DBConnection db = new DBConnection("IS-Project", "postgres", "9157", true);
 
 
         String[] rootUrls = new String[]{"http://sci.cs.uni-kl.de/",
                 "http://dekanat.cs.rptu.de/en/",  "https://rptu.de"};
         Crawler crawler = new Crawler( db, rootUrls , 2, 10, true );
-         crawler.crawl();
-
-         NightCrawler nightCrawler = new NightCrawler( db, rootUrls, true  );
-         nightCrawler.crawl();
+        //crawler.crawl();
 
 
+        // NightCrawler nightCrawler = new NightCrawler( db, rootUrls, true  );
+        // nightCrawler.crawl();
 
-        String[] conjuctiveSearchTerms = new String[]{"study"};
+
+
+        String[] conjuctiveSearchTerms = new String[]{""};
         String[] disjunctiveSearchTerms = new String[]{"student"};
 
         List<String> languages = List.of("English");
