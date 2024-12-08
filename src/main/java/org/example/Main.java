@@ -23,7 +23,7 @@ public class Main {
         -------------------------------------------------------------------------------------------------------
          */
 
-        DBConnection db = new DBConnection("IS-Project", "postgres", "9157", true);
+        DBConnection db = new DBConnection("IS-Project", "postgres", "1234", true);
 
 
         String[] rootUrls = new String[]{"http://sci.cs.uni-kl.de/",
@@ -37,8 +37,8 @@ public class Main {
 
 
 
-        String[] conjuctiveSearchTerms = new String[]{""};
-        String[] disjunctiveSearchTerms = new String[]{"student"};
+        String[] conjuctiveSearchTerms = new String[]{"student"};
+        String[] disjunctiveSearchTerms = new String[]{""};
 
         List<String> languages = List.of("English");
         // List<SearchResult> results = db.disjunctiveCrawling(test, 5, languages,"BM25");

@@ -32,7 +32,7 @@ public class SearchServlet extends HttpServlet {
                 JSONObject jsonQuery = new JSONObject(query);
 
                 // Create connection with db
-                DBConnection db = new DBConnection("IS-Project", "postgres", "Yessin.10", false);
+                DBConnection db = new DBConnection("IS-Project", "postgres", "1234", false);
 
                 JSONObject resultList = this.executeSearch(db, jsonQuery, resultSize);
                 System.out.printf("resultList" +resultList);

@@ -336,12 +336,10 @@ public class DBConnection {
             String insertedSearchedTerms = String.join(",", Collections.nCopies(searchedTermsCount, "?"));
             String insertedLanguages = String.join(",", Collections.nCopies(languages.size(), "?"));
 
-            // dynamic chioce
             String viewName = "features_tfidf";
             if ("BM25".equalsIgnoreCase(scoreOption)) {
                 viewName = "features_bm25";
             }
-
             String conjunctiveQuery =
                     "SELECT d.docid, d.url, f.score AS score " +
                             "FROM documents d " +
@@ -373,7 +371,7 @@ public class DBConnection {
                 while (resultSet.next()) {
                     int foundDocid = resultSet.getInt("docid");
                     String foundDocURL = resultSet.getString("url");
-                    Double foundDocScore = resultSet.getDouble("score");
+                    double foundDocScore = resultSet.getDouble("score");
 
                     foundItems.add(new SearchResult(foundDocid, foundDocURL, foundDocScore));
                 }
@@ -402,12 +400,10 @@ public class DBConnection {
             String insertedSearchedTerms = String.join(",", Collections.nCopies(searchedTermsCount, "?"));
             String insertedLanguages = String.join(",", Collections.nCopies(languages.size(), "?"));
 
-            // Dynamic choice of View
             String viewName = "features_tfidf";
             if ("BM25".equalsIgnoreCase(scoreOption)) {
                 viewName = "features_bm25";
             }
-
             String disjunctiveQuery =
                     "SELECT d.docid, d.url, f.score AS score " +
                             "FROM documents d " +
@@ -421,24 +417,6 @@ public class DBConnection {
                             "WHERE d.lang IN (" + insertedLanguages + ") " +
                             "ORDER BY f.score DESC " +
                             "LIMIT ?";
-            /*String scoreExpression = "SUM(tfidf)";
-            if ("BM25".equalsIgnoreCase(scoreOption)) {
-                scoreExpression = "SUM(bm25)";
-            }
-
-            String disjunctiveQuery =
-                    "SELECT d.docid, d.url, f.score AS score " +
-                            "FROM documents d " +
-                            "JOIN (" +
-                            "   SELECT docid, " + scoreExpression + " AS score " +
-                            "   FROM features " +
-                            "   WHERE term IN (" + insertedSearchedTerms + ") " +
-                            "   GROUP BY docid " +
-                            ") f " +
-                            "ON d.docid = f.docid " +
-                            "WHERE d.lang IN (" + insertedLanguages + ") " +
-                            "ORDER BY f.score DESC " +
-                            "LIMIT ?";*/
 
             try (PreparedStatement preparedStatement = connection.prepareStatement(disjunctiveQuery)) {
                 int parameterIndex = 1;
