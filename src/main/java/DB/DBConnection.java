@@ -671,8 +671,8 @@ public class DBConnection {
             System.out.println("Average Length View created");
 
             // View zur Berechnung der BM25-Score für jedes Dokument
-            String createBM25View = """
-            CREATE OR REPLACE VIEW bm25_view AS
+            String features_bm25 = """
+            CREATE OR REPLACE VIEW features_bm25 AS
             SELECT
                 f.docid,
                 f.term,
@@ -683,8 +683,19 @@ public class DBConnection {
             JOIN document_length_view dl ON f.docid = dl.docid
             JOIN average_length_view al ON 1=1;
         """;
-            stmt.executeUpdate(createBM25View);
+            stmt.executeUpdate(features_bm25);
             System.out.println("BM25 View created");
+
+            String features_tfidf = """
+                    CREATE OR REPLACE VIEW features_tfidf AS
+                            SELECT\s
+                                docid,\s
+                                term,\s
+                                tfidf AS tfidf_score
+                            FROM features;
+                    """;
+            stmt.executeUpdate(features_tfidf);
+            System.out.println("TFIDF View created");
         } catch (SQLException e) {
             System.err.println("Fehler beim Erstellen der Views: " + e.getMessage());
             e.printStackTrace();
@@ -753,6 +764,9 @@ public class DBConnection {
         System.out.println("The word '" + term + "' is misspelled and could not be corrected.");
         return "";
     }
+
+
+
 }
 
 
