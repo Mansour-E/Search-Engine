@@ -164,7 +164,7 @@ $(function() {
     // Version 2
     // AJAX with Rate-Limiter applied
     $("button").on("click", function(event) {
-            const clientIp = "dummy-ip"; // Replace with a real method to get the client IP
+            const clientIp = "dummy-ip";
             event.preventDefault();
 
             if (!RateLimiter.isAllowed(clientIp)) {
@@ -196,12 +196,12 @@ $(function() {
 
             $.ajax({
                 method: 'GET',
-                url: '/webCrowler/search',
+                url: '/is-project/search',
                 data: { query: JSON.stringify(query), k: k },
                 success: function(response) {
                     if (displayOption === "jsonFile") {
                         const encodedResult = encodeURIComponent(JSON.stringify(response));
-                        window.location.href = `/webCrowler/resultPage.html?data=${encodedResult}`;
+                        window.location.href = `/is-project/resultPage.html?data=${encodedResult}`;
                     } else {
                         displayResults(response);
                     }
