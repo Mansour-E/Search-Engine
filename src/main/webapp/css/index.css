@@ -1,0 +1,13 @@
+body{
+    padding:50px
+}
+.searchFormContainer {
+    width: 50%;
+    margin-right: auto;
+    margin-left: auto;
+}
+
+#searchResult li,
+#siteResult li {
+    margin-right: 5px
+}

@@ -50,14 +50,9 @@ public class Indexer {
         // Insert terms into features table
         for (Map.Entry<String, Integer> entry : termFrequencies.entrySet()) {
             String term = entry.getKey();
-            //"Select count(DISTINCT id) from feature f where f.term = ?"
             int frequency = entry.getValue();
-            db.insertFeature(rootDocID, term, frequency );//?
+            db.insertFeature(rootDocID, term, frequency );
         }
-
-        // TODO calculate the Score for each item
-
-        // TODO we can use Threds to calculate the The score and seperatley add the links into the table
 
         // Insert links into documents and links tables
         for (String link : parsedLinks) {

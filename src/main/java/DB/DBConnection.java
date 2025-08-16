@@ -1,5 +1,7 @@
 package DB;
 import CommandInterface.SearchResult;
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 import java.sql.*;
 import java.util.*;
@@ -12,10 +14,13 @@ public class DBConnection {
 
     private Connection connection ;
 
-    public DBConnection(String dbName, String dbOwner, String dbPassword) {
+    public DBConnection(String dbName, String dbOwner, String dbPassword, Boolean init ) {
         this.connection = this.connectToDb(dbName, dbOwner, dbPassword);
-        createTables();
-        initializeSchema();
+        if(init) {
+            createTables();
+            initializeSchema();
+        }
+
     }
 
     // Queries For Exercise 1
@@ -135,12 +140,6 @@ public class DBConnection {
         }
     }
 
-    // Queries For Exercise 2
-    // TODO: You don’t need initializeSchema; add the columns to the features table when it is created.
-    // In the feature table we need only one column (score or tfidf). the tf, idf columns are not needed. You can use WITH statement or create a java class to make the calculation
-    // Please modify the comments and the System.out output to English.
-    // In the Indexer file, make sure to calculate the score after all terms of a document are inserted, not after each document is added (recompute).
-    // create Other branch EX2 :p
 
 
     // Queries for Exercise 2
@@ -159,7 +158,7 @@ public class DBConnection {
         }
     }
 
-    public void calculateTF() {
+    public int calculateTF() {
         String updateTFQuery = """
             UPDATE features
             SET tf = CASE
@@ -175,9 +174,10 @@ public class DBConnection {
             System.err.println("Fehler bei der Berechnung des TF-Werts: " + e.getMessage());
             e.printStackTrace();
         }
+        return 0;
     }
 
-    public void calculateIDF() {
+    public int calculateIDF() {
         String updateIDFQuery = """
         UPDATE features
         SET idf = LOG(? / (SELECT COUNT(DISTINCT docid) FROM features WHERE term = features.term))
@@ -197,6 +197,7 @@ public class DBConnection {
             System.err.println("Fehler bei der Berechnung des IDF-Werts: " + e.getMessage());
             e.printStackTrace();
         }
+        return 0;
     }
 
     public void calculateTFIDF() {
@@ -230,11 +231,10 @@ public class DBConnection {
                 .map(term -> stemWord(term))
                 .collect(Collectors.toList());
 
-        // TODO change SUM(term_frequency) with SUM(frequency_score) * 2 !!!!
         String insertedSearchedTerms = String.join(",", Collections.nCopies(searchedTermsCount, "?"));
         String conjunctiveQuery = "SELECT d.docid, d.url, f.score as score FROM documents as d\n" +
                 "jOIN (" +
-                "SELECT docid , SUM(term_frequency) as score FROM features WHERE term IN (" + insertedSearchedTerms + ")\n" +
+                "SELECT docid , SUM(tf) as score FROM features WHERE term IN (" + insertedSearchedTerms + ")\n" +
                 "GROUP BY docid HAVING COUNT(DISTINCT term) = ? \n" +
                 "LIMIT ? ) as f\n" +
                 "ON d.docid = f.docid ORDER BY score DESC";
@@ -270,13 +270,12 @@ public class DBConnection {
                 .map(term -> stemWord(term))
                 .collect(Collectors.toList());
 
-        // TODO change SUM(term_frequency) with SUM(frequency_score)
         String insertedSearchedTerms = String.join(",", Collections.nCopies(searchedTermsCount, "?"));
         String disjunctiveQuery = "SELECT d.docid, d.url, f.score as score FROM documents as d\n" +
                 "jOIN (" +
-                    "SELECT docid , SUM(term_frequency) as score FROM features WHERE term IN (" + insertedSearchedTerms + ")\n" +
+                    "SELECT docid , SUM(tf) as score FROM features WHERE term IN (" + insertedSearchedTerms + ")\n" +
                     "GROUP BY docid \n" +
-                    "ORDER BY SUM(term_frequency) DESC\n" +
+                    "ORDER BY SUM(tf) DESC\n" +
                     "LIMIT ? ) as f\n" +
                 "ON d.docid = f.docid ORDER BY score DESC";
 
@@ -301,6 +300,60 @@ public class DBConnection {
         }
         return foundItems;
     }
+
+
+    // Queries For Exercise 4
+    public JSONArray computeStat(String[] searchedTerms ) {
+        JSONArray statArray = new JSONArray();
+        String query = "SELECT  COUNT(docid) AS df FROM features WHERE term = ? ";
+
+        List<String> stemmedSearchedTerms = Arrays.stream(searchedTerms)
+                .map(term -> stemWord(term))
+                .collect(Collectors.toList());
+
+        try {
+            PreparedStatement preparedStatement = connection.prepareStatement(query);
+
+            for (int i = 0; i < stemmedSearchedTerms.size(); i++) {
+                preparedStatement.setString(1, stemmedSearchedTerms.get(i));
+                ResultSet resultSet = preparedStatement.executeQuery();
+
+                if (resultSet.next()) {
+                    JSONObject termObject = new JSONObject();
+                    termObject.put("term", searchedTerms[i]);
+                    termObject.put("df", resultSet.getInt("df"));
+                    statArray.put(termObject);
+                } else {
+                    // If the term does not exist in any document, set df to 0
+                    JSONObject termObject = new JSONObject();
+                    termObject.put("term", searchedTerms[i]);
+                    termObject.put("df", 0);
+                    statArray.put(termObject);
+                }
+                resultSet.close();
+            }
+            preparedStatement.close();
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+
+        return statArray;
+
+    }
+
+    public int calcualteCW() {
+        String query = "SELECT count(DISTINCT term) from features\n";
+
+        try( Statement stmt = connection.createStatement() ;
+            ResultSet rs = stmt.executeQuery(query)) {
+                rs.next();
+                return rs.getInt(1);
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+
 
 }
 
