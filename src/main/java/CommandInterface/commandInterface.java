@@ -1,28 +1,24 @@
 package CommandInterface;
 
 import DB.DBConnection;
-import java.util.ArrayList;
+
 import java.util.List;
 
-/*
-//*  from input console:
-    connection with DB , take DBName, DBOwner, DBPassword
-    take the terms search and if the query should be conjuctive/disjunctive
-    display the result (top5, rank, url, achieved score)
-*/
+
 public class commandInterface {
 
 
-    public static void executeSearch (DBConnection db, String[] searchTerms, boolean isConjuctive, int resultSize ) {
+    public static List<SearchResult> executeSearch (DBConnection db, String[] searchTerms, boolean isConjuctive, int resultSize ) {
         List<SearchResult> foundItems;
+        String[] lang = new String[]{"English", "German" };
         if(isConjuctive) {
-            foundItems = db.conjuntiveCrawling (searchTerms,resultSize);
+            foundItems = db.conjuntiveCrawling (searchTerms,resultSize, List.of(lang) ,"tfidf");
         }else {
-            foundItems = db.disjunctiveCrawling(searchTerms,resultSize);
+            foundItems = db.conjuntiveCrawling(searchTerms,resultSize, List.of(lang), "tfidf");
         }
 
 
-        if(foundItems.size() == 0) {
+        if(foundItems.isEmpty()) {
             System.out.println("there are noterms that match these words");
         }
         for (int i = 0; i < foundItems.size(); i++) {
@@ -30,6 +26,7 @@ public class commandInterface {
             System.out.println("rank " + (i+1) + ": " + foundItem.getUrl() + " (Score: " + foundItem.getScore() + ")");
         }
 
+        return foundItems;
     }
 
 }
