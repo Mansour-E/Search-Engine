@@ -25,6 +25,7 @@ public class Main {
         String[] test = new String[]{"student", "study"};
         executeSearch(db, test,false, 9 );
 
+
         // THIS PART BELONGS TO EXERCISE  3
         /*
         Scanner scanner = new Scanner(System.in);
