@@ -5,32 +5,36 @@ import Indexer.Indexer;
 import Sheet2.Classifier.Classifier;
 
 import java.io.IOException;
-import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class Crawler {
-    DBConnection db;
-    int depthToCrawl;
-    int nbrToCrawl;
-    Boolean allowToLeaveDomains;
+
+    private final DBConnection db;
+    private final int depthToCrawl;
+    private final int nbrToCrawl;
+    private final boolean allowToLeaveDomains;
+
+    // Rate limiting: minimum ms between requests to the same domain
+    private static final long CRAWL_DELAY_MS = 500;
+    private final Map<String, Long> domainLastAccess = new HashMap<>();
 
     static List<String> allowedDomainsAndSites = Arrays.asList("cs.uni-kl.de", "cs.rptu.de");
+
     int crawledUrlCount = 0;
     Queue<URLDepthPair> urlQueue = new LinkedList<>();
     Set<String> visitedPages = new HashSet<>();
     Set<String> allUrlsInDB = new HashSet<>();
     ExecutorService threadPool;
-    Classifier classifier ;
+    Classifier classifier;
     String[] rootUrls;
 
-    public Crawler(DBConnection db, String[] rootUrls , int depthToCrawl, int nbrToCrawl, Boolean allowToLeaveDomains) throws IOException {
+    public Crawler(DBConnection db, String[] rootUrls, int depthToCrawl, int nbrToCrawl, boolean allowToLeaveDomains) throws IOException {
         this.db = db;
         this.depthToCrawl = depthToCrawl;
         this.nbrToCrawl = nbrToCrawl;
@@ -39,37 +43,28 @@ public class Crawler {
         this.classifier = new Classifier();
         this.rootUrls = rootUrls;
 
-        // Load visited Pages
         loadVisitedURl();
-        System.out.println("visitedPages" + visitedPages);
+        System.out.println("Visited pages loaded: " + visitedPages.size());
 
-        // Load existing state from the database if the crawler was interrupted
         loadNotVisitedURL();
-
-
-        // getAllURls
         loadAllURlsInDB();
 
-        // If the system was not interrupted, initialize the queue with root URLs
         if (urlQueue.isEmpty()) {
             for (String rootUrl : rootUrls) {
                 urlQueue.add(new URLDepthPair(-1, rootUrl, 0, "Unknown"));
-                // Initial state set to 0 (not visited)
                 db.insertIntoCrawledPagesQueue(rootUrl, 0, 0);
             }
         }
-
     }
 
-    private void loadNotVisitedURL () {
+    private void loadNotVisitedURL() {
         List<URLDepthPair> queuedUrls = db.getQueuedUrls();
         urlQueue.addAll(queuedUrls);
     }
 
-    private void loadAllURlsInDB () {
-        Set<String> notVisitedURLSButExist = db.getAllURLS();
-        allUrlsInDB.addAll(notVisitedURLSButExist);
-        // this could be improved
+    private void loadAllURlsInDB() {
+        Set<String> existing = db.getAllURLS();
+        allUrlsInDB.addAll(existing);
         allUrlsInDB.addAll(Arrays.asList(rootUrls));
     }
 
@@ -82,99 +77,102 @@ public class Crawler {
         while (!urlQueue.isEmpty() && crawledUrlCount < nbrToCrawl) {
             URLDepthPair urlDepthPair = urlQueue.poll();
             String url = urlDepthPair.url;
-            // Check if page is already visited
+
             if (visitedPages.contains(url)) {
-                System.out.println("Crawler.java: URL " + url + " is already visited. Skipping.");
+                System.out.println("Already visited, skipping: " + url);
                 continue;
-            }
-            // Check if the URL exceeds depth
-            else if (urlDepthPair.depth > depthToCrawl) {
-                System.out.println("Crawler.java: " + url + " exceeds maximum crawl depth. Skipping.");
+            } else if (urlDepthPair.depth > depthToCrawl) {
+                System.out.println("Exceeds max depth, skipping: " + url);
                 continue;
-            }
-            // Check if the URL is allowed to crawl
-            else if (!isUrlAllowedToCrawl(url)) {
-                System.out.println("Crawler.java: " + url + " not allowed to crawl. Skipping.");
+            } else if (!isUrlAllowedToCrawl(url)) {
+                System.out.println("Domain not allowed, skipping: " + url);
                 continue;
-            }else{
-                db.updateCrawledPageState(url, 1);
-                visitedPages.add(url);
-                crawledUrlCount++;
-                crawlPage(urlDepthPair);
             }
 
+            // Rate limiting per domain
+            applyDomainDelay(url);
+
+            db.updateCrawledPageState(url, 1);
+            visitedPages.add(url);
+            crawledUrlCount++;
+            crawlPage(urlDepthPair);
         }
         db.reCompute();
     }
 
-    private void crawlPage(URLDepthPair urlDepthPair) throws IOException {
+    private void applyDomainDelay(String url) {
+        String domain = extractDomain(url);
+        long now = System.currentTimeMillis();
+        Long lastAccess = domainLastAccess.get(domain);
+        if (lastAccess != null) {
+            long elapsed = now - lastAccess;
+            if (elapsed < CRAWL_DELAY_MS) {
+                try {
+                    Thread.sleep(CRAWL_DELAY_MS - elapsed);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+        }
+        domainLastAccess.put(domain, System.currentTimeMillis());
+    }
+
+    private String extractDomain(String url) {
+        Matcher m = Pattern.compile("^(?:https?://)?(?:www\\.)?([^/]+)").matcher(url);
+        return m.find() ? m.group(1) : url;
+    }
+
+    private void crawlPage(URLDepthPair urlDepthPair) {
         int docId = urlDepthPair.id;
         String url = urlDepthPair.url;
         int depth = urlDepthPair.depth;
         String lang = urlDepthPair.lang;
-        System.out.println("Crawling URL: " + url + " at depth: " + depth);
+        System.out.println("Crawling: " + url + " (depth=" + depth + ")");
 
         try {
-            // Fetch the page content
             XhtmlConverter xhtmlConverter = new XhtmlConverter(url);
             String htmlContent = xhtmlConverter.convertToXHML();
 
-            // check for the document language
-            if(lang.equals("Unknown")) {
+            if (lang.equals("Unknown")) {
                 lang = classifier.checkForLanguage(htmlContent);
                 urlDepthPair.insertLang(lang);
             }
-            // Create document in the database In case of root url
-            String crawledDate = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
-            if (docId == -1 ) {
-                // Insert the document With the correct lang
-                System.out.println("crawler.js: insert url " + url + " with lang " + lang);
-                docId = db.insertDocument(url, crawledDate, lang);
-            }else {
-                // Update document visited state
 
-                // Update document language
+            String crawledDate = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+            if (docId == -1) {
+                docId = db.insertDocument(url, crawledDate, lang);
+            } else {
                 db.updateLanguageDocuments(url, lang);
             }
 
-            // Index the page using the Indexer
             Indexer indexer = new Indexer(db, htmlContent, docId, visitedPages, allUrlsInDB, lang);
             indexer.indexHTMlContent();
-            // Add child links to the queue for further crawling
-            HashMap<Integer, String> childElements = indexer.getLinks();
 
+            HashMap<Integer, String> childElements = indexer.getLinks();
             for (Integer childId : childElements.keySet()) {
                 String childUrl = childElements.get(childId);
-                // Check if page is already visited and Check if the URL exceeds depth and Check if the URL is allowed to crawl
-                if (!visitedPages.contains(childUrl) && depth + 1 <= depthToCrawl && isUrlAllowedToCrawl(url)) {
+                if (!visitedPages.contains(childUrl) && depth + 1 <= depthToCrawl && isUrlAllowedToCrawl(childUrl)) {
                     urlQueue.add(new URLDepthPair(childId, childUrl, depth + 1, "Unknown"));
                     db.insertIntoCrawledPagesQueue(childUrl, depth + 1, 0);
-
                 }
             }
-        }catch (Exception e) {
-            System.out.println(e);
+        } catch (Exception e) {
+            System.err.println("Error crawling " + url + ": " + e.getMessage());
         }
     }
 
-    // Function that allows verifying if the given URL must be crawled or not
     public boolean isUrlAllowedToCrawl(String url) {
-        // If allowed to leave the domain, return true immediately
         if (allowToLeaveDomains) return true;
 
-        String domainRegex = "^(?:https?://)?(?:www\\.)?([^/]+)";
-        Pattern pattern = Pattern.compile(domainRegex);
-        Matcher matcher = pattern.matcher(url);
-
+        Matcher matcher = Pattern.compile("^(?:https?://)?(?:www\\.)?([^/]+)").matcher(url);
         if (matcher.find()) {
             String urlDomain = matcher.group(1);
             for (String allowedDomain : allowedDomainsAndSites) {
-                if (allowedDomain.contains(urlDomain)) {
+                if (urlDomain.contains(allowedDomain) || allowedDomain.contains(urlDomain)) {
                     return true;
                 }
             }
-            System.out.println("URL " + url + " could not be crawled because its domain "+urlDomain + " is not allowed.");
-
+            System.out.println("Domain not allowed: " + urlDomain);
         }
         return false;
     }
@@ -183,10 +181,9 @@ public class Crawler {
         int id;
         String url;
         int depth;
-        String lang = "Unknown"; ;
+        String lang;
 
-
-        public URLDepthPair(int id, String url, int depth, String lang ) {
+        public URLDepthPair(int id, String url, int depth, String lang) {
             this.id = id;
             this.url = url;
             this.depth = depth;
@@ -196,6 +193,5 @@ public class Crawler {
         public void insertLang(String lang) {
             this.lang = lang;
         }
-
     }
 }

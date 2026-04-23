@@ -1,0 +1,44 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Namespace
+# ─────────────────────────────────────────────────────────────────────────────
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: search-engine
+---
+# ─────────────────────────────────────────────────────────────────────────────
+# Ingress  (requires ingress-nginx controller installed in the cluster)
+#   kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/cloud/deploy.yaml
+# ─────────────────────────────────────────────────────────────────────────────
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: search-engine-ingress
+  namespace: search-engine
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    # Rate limiting (mirrors Sheet-2 requirement: 10 req/s global, 1 req/s per IP)
+    nginx.ingress.kubernetes.io/limit-rps: "10"
+    nginx.ingress.kubernetes.io/limit-connections: "5"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: search.rptu.de     # ← deine Domain anpassen
+      http:
+        paths:
+          # React frontend
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend-service
+                port:
+                  number: 80
+          # Java backend API (Tomcat)
+          - path: /is-project
+            pathType: Prefix
+            backend:
+              service:
+                name: backend-service
+                port:
+                  number: 8080

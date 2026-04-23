@@ -1,4 +1,5 @@
 package DB;
+
 import CommandInterface.SearchResult;
 import Crawler.Crawler.URLDepthPair;
 import org.json.JSONArray;
@@ -7,6 +8,7 @@ import org.la4j.Matrix;
 import org.la4j.matrix.dense.Basic2DMatrix;
 import org.la4j.vector.dense.BasicVector;
 import Sheet2.PageRank.PageRank;
+
 import java.sql.*;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -16,194 +18,216 @@ import static Indexer.Parser.stemWord;
 
 public class DBConnection {
 
-    private Connection connection ;
+    private Connection connection;
     private Map<Integer, Integer> docIdToIndex = new HashMap<>();
     private Map<Integer, Integer> indexToDocId = new HashMap<>();
-    public DBConnection(String dbName, String dbOwner, String dbPassword, Boolean init ) {
-        this.connection = this.connectToDb(dbName, dbOwner, dbPassword);
-        if(init) {
+
+    /**
+     * Konstruktor – liest Verbindungsparameter bevorzugt aus Umgebungsvariablen.
+     * Fallback: übergebene Parameter (für lokale Entwicklung ohne Docker).
+     */
+    public DBConnection(String dbName, String dbOwner, String dbPassword, boolean init) {
+        // Umgebungsvariablen überschreiben hartcodierte Werte (wichtig für Docker/K8s)
+        String host     = getEnvOrDefault("DB_HOST",     "localhost");
+        String port     = getEnvOrDefault("DB_PORT",     "5432");
+        String name     = getEnvOrDefault("DB_NAME",     dbName);
+        String user     = getEnvOrDefault("DB_USER",     dbOwner);
+        String password = getEnvOrDefault("DB_PASSWORD", dbPassword);
+
+        this.connection = connectToDb(host, port, name, user, password);
+        if (init) {
             createTables();
             initializeSchema();
         }
     }
-    // Queries For Exercise 1
-    public Connection connectToDb( String dbName, String dbOwner, String dbPassword) {
 
-        Connection connection = null;
+    private static String getEnvOrDefault(String key, String defaultValue) {
+        String val = System.getenv(key);
+        return (val != null && !val.isBlank()) ? val : defaultValue;
+    }
+
+    // ── Verbindung ────────────────────────────────────────────────────────────
+
+    private Connection connectToDb(String host, String port, String dbName, String user, String password) {
+        Connection conn = null;
         try {
             Class.forName("org.postgresql.Driver");
-            connection = DriverManager.getConnection("jdbc:postgresql://localhost:5432/" +dbName, dbOwner, dbPassword);
-            if (connection != null) {
-                System.out.println("Connection Established");
-            } else {
-                System.out.println("Connection Failed");
-            }
-
+            String url = "jdbc:postgresql://" + host + ":" + port + "/" + dbName;
+            conn = DriverManager.getConnection(url, user, password);
+            System.out.println("DB connection established: " + url);
         } catch (Exception e) {
-            System.out.println(e);
+            System.err.println("DB connection failed: " + e.getMessage());
         }
-        return connection;
+        return conn;
     }
+
+    // ── Tabellen anlegen ──────────────────────────────────────────────────────
+
     public void createDocumentsTable() {
-        Statement statement;
-        try {
-            String query = "CREATE TABLE IF NOT EXISTS documents(\n" +
-                    "\tdocid SERIAL PRIMARY KEY,\n" +
-                    "\turl TEXT NOT NULL,\n" +
-                    "\tcrawled_on_date CHAR(20) NOT NULL,\n" +
-                    "\tlang TEXT NOT NULL\n" +
-                    ");";
-            statement = connection.createStatement();
-            statement.executeUpdate(query);
-            System.out.println("Documents Table is created");
+        try (Statement stmt = connection.createStatement()) {
+            stmt.executeUpdate(
+                "CREATE TABLE IF NOT EXISTS documents (" +
+                "  docid          SERIAL PRIMARY KEY," +
+                "  url            TEXT NOT NULL," +
+                "  crawled_on_date CHAR(20) NOT NULL," +
+                "  lang           TEXT NOT NULL" +
+                ")"
+            );
+            System.out.println("Table 'documents' ready.");
         } catch (SQLException e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException("createDocumentsTable: " + e.getMessage(), e);
         }
     }
+
     public void createFeaturesTable() {
-        Statement statement;
-        try {
-            String query = "CREATE TABLE IF NOT EXISTS features (\n" +
-                    "\tdocid INT REFERENCES documents(docid),\n" +
-                    "\tterm TEXT NOT NULL,\n" +
-                    "\tterm_frequency INT NOT NULL\n" +
-                    ");";
-            statement = connection.createStatement();
-            statement.executeUpdate(query);
-            System.out.println("Features Table is created");
+        try (Statement stmt = connection.createStatement()) {
+            stmt.executeUpdate(
+                "CREATE TABLE IF NOT EXISTS features (" +
+                "  docid          INT REFERENCES documents(docid)," +
+                "  term           TEXT NOT NULL," +
+                "  term_frequency INT NOT NULL" +
+                ")"
+            );
+            System.out.println("Table 'features' ready.");
         } catch (SQLException e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException("createFeaturesTable: " + e.getMessage(), e);
         }
     }
+
     public void createLinksTable() {
-        Statement statement;
-        try {
-            String query = "CREATE TABLE IF NOT EXISTS links (\n" +
-                    "\tfrom_docid INT REFERENCES documents(docid),\n" +
-                    "  \tto_docid INT REFERENCES documents(docid)\n" +
-                    ")";
-            statement = connection.createStatement();
-            statement.executeUpdate(query);
-            System.out.println("Links Table is created");
+        try (Statement stmt = connection.createStatement()) {
+            stmt.executeUpdate(
+                "CREATE TABLE IF NOT EXISTS links (" +
+                "  from_docid INT REFERENCES documents(docid)," +
+                "  to_docid   INT REFERENCES documents(docid)" +
+                ")"
+            );
+            System.out.println("Table 'links' ready.");
         } catch (SQLException e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException("createLinksTable: " + e.getMessage(), e);
         }
     }
+
     public void crawledPagesQueueTable() {
-        Statement statement;
-        try {
-            String query = "CREATE TABLE IF NOT EXISTS crawledPagesQueueTable (\n" +
-                    "\tid SERIAL PRIMARY KEY,\n" +
-                    "\turl TEXT NOT NULL,\n" +
-                    "\tdepth INT NOT NULL,\n" +
-                    "\tstate INT NOT NULL \n" +
-                    ");";
-            statement = connection.createStatement();
-            statement.executeUpdate(query);
-            System.out.println("crawledPagesQueueTable Table is created");
+        try (Statement stmt = connection.createStatement()) {
+            stmt.executeUpdate(
+                "CREATE TABLE IF NOT EXISTS crawledPagesQueueTable (" +
+                "  id    SERIAL PRIMARY KEY," +
+                "  url   TEXT NOT NULL," +
+                "  depth INT NOT NULL," +
+                "  state INT NOT NULL" +
+                ")"
+            );
+            System.out.println("Table 'crawledPagesQueueTable' ready.");
         } catch (SQLException e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException("crawledPagesQueueTable: " + e.getMessage(), e);
         }
     }
+
     public void createTables() {
-        this.createDocumentsTable();
-        this.createFeaturesTable();
-        this.createLinksTable();
-        this.crawledPagesQueueTable();
+        createDocumentsTable();
+        createFeaturesTable();
+        createLinksTable();
+        crawledPagesQueueTable();
     }
+
+    // ── Schema initialisieren (Spalten + Indices) ─────────────────────────────
+
+    private void initializeSchema() {
+        try (Statement stmt = connection.createStatement()) {
+            stmt.executeUpdate("ALTER TABLE features ADD COLUMN IF NOT EXISTS bm25  REAL DEFAULT 0");
+            stmt.executeUpdate("ALTER TABLE features ADD COLUMN IF NOT EXISTS tf    REAL DEFAULT 0");
+            stmt.executeUpdate("ALTER TABLE features ADD COLUMN IF NOT EXISTS idf   REAL DEFAULT 0");
+            stmt.executeUpdate("ALTER TABLE features ADD COLUMN IF NOT EXISTS tfidf REAL DEFAULT 0");
+
+            // Indices für performante Suche
+            stmt.executeUpdate("CREATE INDEX IF NOT EXISTS idx_features_term   ON features (term)");
+            stmt.executeUpdate("CREATE INDEX IF NOT EXISTS idx_features_docid  ON features (docid)");
+            stmt.executeUpdate("CREATE INDEX IF NOT EXISTS idx_documents_url   ON documents (url)");
+        } catch (Exception e) {
+            System.err.println("initializeSchema error: " + e.getMessage());
+        }
+    }
+
+    // ── INSERT-Methoden ───────────────────────────────────────────────────────
+
     public int insertDocument(String url, String crawledDate, String lang) {
-        String insertQuery = "INSERT INTO documents (url, crawled_on_date, lang) VALUES (?, ?, ?) RETURNING docid;";
-        try (PreparedStatement preparedStatement = connection.prepareStatement(insertQuery)) {
-            preparedStatement.setString(1, url);
-            preparedStatement.setString(2, crawledDate);
-            preparedStatement.setString(3, lang);
-
-
-            ResultSet resultSet = preparedStatement.executeQuery();
-            if (resultSet.next()) {
-                int docid = resultSet.getInt("docid");
-                return docid;
-            }
+        String sql = "INSERT INTO documents (url, crawled_on_date, lang) VALUES (?, ?, ?) RETURNING docid";
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setString(1, url);
+            ps.setString(2, crawledDate);
+            ps.setString(3, lang);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) return rs.getInt("docid");
         } catch (SQLException e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException("insertDocument: " + e.getMessage(), e);
         }
         return -1;
     }
+
     public void insertLink(int fromDocid, int toDocid) {
-        String insertQuery = "INSERT INTO links (from_docid, to_docid) VALUES (?, ?)";
-
-        try (PreparedStatement preparedStatement = connection.prepareStatement(insertQuery)) {
-            preparedStatement.setInt(1, fromDocid);
-            preparedStatement.setInt(2, toDocid);
-
-            preparedStatement.executeUpdate();
+        String sql = "INSERT INTO links (from_docid, to_docid) VALUES (?, ?)";
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setInt(1, fromDocid);
+            ps.setInt(2, toDocid);
+            ps.executeUpdate();
         } catch (SQLException e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException("insertLink: " + e.getMessage(), e);
         }
     }
 
-    public void insertFeature(int docId, String term, int termFrequuency) {
-        String insertQuery = "INSERT INTO features (docid, term, term_frequency) VALUES (?, ?, ? )";
-        try (PreparedStatement preparedStatement = connection.prepareStatement(insertQuery)) {
-            preparedStatement.setInt(1, docId);
-            preparedStatement.setString(2, term);
-            preparedStatement.setInt(3, termFrequuency);
-
-            preparedStatement.executeUpdate();
+    public void insertFeature(int docId, String term, int termFrequency) {
+        String sql = "INSERT INTO features (docid, term, term_frequency) VALUES (?, ?, ?)";
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setInt(1, docId);
+            ps.setString(2, term);
+            ps.setInt(3, termFrequency);
+            ps.executeUpdate();
         } catch (SQLException e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException("insertFeature: " + e.getMessage(), e);
         }
     }
+
+    // ── Crawler Queue ─────────────────────────────────────────────────────────
 
     public List<URLDepthPair> getQueuedUrls() {
-        List<URLDepthPair> queuedUrls = new ArrayList<>();
-        String query = "SELECT id, url, depth FROM crawledPagesQueueTable WHERE state = 0 ORDER BY depth ASC";
-        try (Statement stmt = connection.createStatement();
-             ResultSet rs = stmt.executeQuery(query)) {
+        List<URLDepthPair> list = new ArrayList<>();
+        String sql = "SELECT id, url, depth FROM crawledPagesQueueTable WHERE state = 0 ORDER BY depth ASC";
+        try (Statement stmt = connection.createStatement(); ResultSet rs = stmt.executeQuery(sql)) {
             while (rs.next()) {
-                int id = rs.getInt("id");
-                String url = rs.getString("url");
-                int depth = rs.getInt("depth");
-                // Unknown because they have not yet crawled
-                queuedUrls.add(new URLDepthPair(id, url, depth, "Unknown"));
+                list.add(new URLDepthPair(rs.getInt("id"), rs.getString("url"), rs.getInt("depth"), "Unknown"));
             }
         } catch (SQLException e) {
             e.printStackTrace();
         }
-        return queuedUrls;
+        return list;
     }
-    public Set<String> getAllURLS() {
-        Set<String> queuedUrls = new HashSet<>();
-        String query = "SELECT docid FROM documents";
-        try (Statement stmt = connection.createStatement();
-             ResultSet rs = stmt.executeQuery(query)) {
-            while (rs.next()) {
-                String url = rs.getString("docid");
-                queuedUrls.add(url);
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return queuedUrls;
-    }
-    public  Set<String> getVisitedUrls() {
-        Set<String> visitedPages = new HashSet<>();
-        String query = "Select url From crawledPagesQueueTable WHERE state = 1";
-        try (Statement stmt = connection.createStatement();
-            ResultSet rs = stmt.executeQuery(query)) {
-            while (rs.next()) {
-                String url = rs.getString("url");
-                visitedPages.add(url);
 
-            }
+    public Set<String> getAllURLS() {
+        Set<String> urls = new HashSet<>();
+        try (Statement stmt = connection.createStatement();
+             ResultSet rs = stmt.executeQuery("SELECT url FROM documents")) {
+            while (rs.next()) urls.add(rs.getString("url"));
         } catch (SQLException e) {
-            throw new RuntimeException(e);
+            e.printStackTrace();
         }
-        return visitedPages;
+        return urls;
     }
+
+    public Set<String> getVisitedUrls() {
+        Set<String> visited = new HashSet<>();
+        try (Statement stmt = connection.createStatement();
+             ResultSet rs = stmt.executeQuery("SELECT url FROM crawledPagesQueueTable WHERE state = 1")) {
+            while (rs.next()) visited.add(rs.getString("url"));
+        } catch (SQLException e) {
+            throw new RuntimeException("getVisitedUrls: " + e.getMessage(), e);
+        }
+        return visited;
+    }
+
     public void updateCrawledPageState(String url, int state) {
-        String query = "UPDATE crawledPagesQueueTable SET state = ? WHERE url = ?";
-        try (PreparedStatement ps = connection.prepareStatement(query)) {
+        String sql = "UPDATE crawledPagesQueueTable SET state = ? WHERE url = ?";
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setInt(1, state);
             ps.setString(2, url);
             ps.executeUpdate();
@@ -211,9 +235,10 @@ public class DBConnection {
             e.printStackTrace();
         }
     }
+
     public void insertIntoCrawledPagesQueue(String url, int depth, int state) {
-        String query = "INSERT INTO crawledPagesQueueTable (url, depth, state) VALUES (?, ?, ?)";
-        try (PreparedStatement ps = connection.prepareStatement(query)) {
+        String sql = "INSERT INTO crawledPagesQueueTable (url, depth, state) VALUES (?, ?, ?)";
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setString(1, url);
             ps.setInt(2, depth);
             ps.setInt(3, state);
@@ -222,67 +247,41 @@ public class DBConnection {
             e.printStackTrace();
         }
     }
-    // Queries for Exercise 2
-    private void initializeSchema() {
-        try (Statement stmt = connection.createStatement()) {
-            // Add new columns with default values if they don't already exist
-            stmt.executeUpdate("ALTER TABLE features ADD COLUMN IF NOT EXISTS bm25 REAL DEFAULT 0");
-            stmt.executeUpdate("ALTER TABLE features ADD COLUMN IF NOT EXISTS tf REAL DEFAULT 0");
-            stmt.executeUpdate("ALTER TABLE features ADD COLUMN IF NOT EXISTS idf REAL DEFAULT 0");
-            stmt.executeUpdate("ALTER TABLE features ADD COLUMN IF NOT EXISTS tfidf REAL DEFAULT 0");
 
-            // Create index on term for efficient TF*IDF calculations
-            stmt.executeUpdate("CREATE INDEX IF NOT EXISTS idx_term_features ON features (term)");
-        } catch (Exception e) {
-            System.err.println("Error initializing database schema: " + e.getMessage());
-            e.printStackTrace();
-        }
-    }
+    // ── TF / IDF / TF-IDF ────────────────────────────────────────────────────
+
     public void calculateTF() {
-        String updateTFQuery = """
-            UPDATE features
-            SET tf = CASE
-                WHEN term_frequency > 0 THEN 1 + LOG(term_frequency)
-                ELSE 0
-            END
-        """;
-
+        String sql = "UPDATE features SET tf = CASE WHEN term_frequency > 0 THEN 1 + LOG(term_frequency) ELSE 0 END";
         try (Statement stmt = connection.createStatement()) {
-            stmt.executeUpdate(updateTFQuery);
+            stmt.executeUpdate(sql);
         } catch (SQLException e) {
-            System.err.println("Fehler bei der Berechnung des TF-Werts: " + e.getMessage());
-            e.printStackTrace();
+            System.err.println("calculateTF error: " + e.getMessage());
         }
     }
+
     public void calculateIDF() {
-        String updateIDFQuery = """
-        UPDATE features
-        SET idf = LOG(? / (SELECT COUNT(DISTINCT docid) FROM features WHERE term = features.term))
-    """;
-
-        try (PreparedStatement stmt = connection.prepareStatement(updateIDFQuery);
-             Statement totalDocsStmt = connection.createStatement()) {
-            ResultSet rs = totalDocsStmt.executeQuery("SELECT COUNT(*) AS total_documents FROM documents");
-            int totalDocuments = rs.next() ? rs.getInt("total_documents") : 1;
-
-            stmt.setInt(1, totalDocuments);
-            stmt.executeUpdate();
+        String sql =
+            "UPDATE features " +
+            "SET idf = LOG(? / (SELECT COUNT(DISTINCT docid) FROM features AS f2 WHERE f2.term = features.term))";
+        try (PreparedStatement ps = connection.prepareStatement(sql);
+             Statement totalStmt = connection.createStatement()) {
+            ResultSet rs = totalStmt.executeQuery("SELECT COUNT(*) FROM documents");
+            int total = rs.next() ? rs.getInt(1) : 1;
+            ps.setInt(1, total);
+            ps.executeUpdate();
         } catch (SQLException e) {
-            System.err.println("Fehler bei der Berechnung des IDF-Werts: " + e.getMessage());
-            e.printStackTrace();
+            System.err.println("calculateIDF error: " + e.getMessage());
         }
     }
+
     public void calculateTFIDF() {
-        String updateTFIDFQuery = """
-        UPDATE features
-        SET tfidf = tf * idf
-    """;
         try (Statement stmt = connection.createStatement()) {
-            stmt.executeUpdate(updateTFIDFQuery);
+            stmt.executeUpdate("UPDATE features SET tfidf = tf * idf");
         } catch (SQLException e) {
             e.printStackTrace();
         }
     }
+
     public void reCompute() {
         try {
             calculateTF();
@@ -290,418 +289,270 @@ public class DBConnection {
             calculateTFIDF();
             calculateBM25InDatabase();
             createViews();
-            System.out.println("calculate tfidf, Pageranking, BM25 ");
+            System.out.println("Scores recomputed: TF-IDF + BM25 + PageRank.");
         } catch (SQLException e) {
-            System.err.println("Failed to Recomputing: " + e.getMessage());
-            e.printStackTrace();
+            System.err.println("reCompute failed: " + e.getMessage());
         }
     }
 
-    // Queries For Exercise 3
-    public List<SearchResult> searchCrawling(String[] conjunctiveSearchedTerms, String[] disjunctiveSearchedTerms, int resultSize, List<String> languages, String scoreOption) {
-        List<SearchResult> foundConjunctiveSearchedTerms = this.conjuntiveCrawling(conjunctiveSearchedTerms, resultSize, languages, scoreOption);
-        List<SearchResult> foundDisjunctiveSearchedTerms = this.disjunctiveCrawling(disjunctiveSearchedTerms, resultSize, languages, scoreOption);
-        List<SearchResult> totalSearchResult = Stream.concat(foundConjunctiveSearchedTerms.stream(), foundDisjunctiveSearchedTerms.stream())
+    // ── Suche (Sheet 1 – Exercise 3) ─────────────────────────────────────────
+
+    public List<SearchResult> searchCrawling(
+            String[] conjunctiveTerms,
+            String[] disjunctiveTerms,
+            int resultSize,
+            List<String> languages,
+            String scoreOption) {
+
+        List<SearchResult> conjResults  = conjuntiveCrawling(conjunctiveTerms,  resultSize, languages, scoreOption);
+        List<SearchResult> disjResults  = disjunctiveCrawling(disjunctiveTerms, resultSize, languages, scoreOption);
+
+        Set<String>        seenUrls     = new HashSet<>();
+        List<SearchResult> merged       = Stream.concat(conjResults.stream(), disjResults.stream())
+                .sorted(Comparator.comparingDouble(SearchResult::getScore).reversed())
+                .filter(r -> seenUrls.add(r.getUrl()))
+                .limit(resultSize)
                 .collect(Collectors.toList());
-        List<SearchResult> sortedSearchResult = totalSearchResult.stream()
-                .sorted((result1, result2) -> Double.compare(result2.getScore(), result1.getScore()))
-                .collect(Collectors.toList());
-        Set<String> seenUrls = new HashSet<>();
-        List<SearchResult> finalSearchResults = new ArrayList<>();
-        for (SearchResult result : sortedSearchResult) {
-            if (seenUrls.size() >= resultSize) {
-                break;
-            }
-            if (!seenUrls.contains(result.getUrl())) {
-                seenUrls.add(result.getUrl());
-                finalSearchResults.add(result);
-            }
-        }
-        return finalSearchResults;
+        return merged;
     }
-    public List<SearchResult> conjuntiveCrawling(String[] searchedTerms, int resultSize, List<String> languages, String scoreOption) {
+
+    public List<SearchResult> conjuntiveCrawling(
+            String[] searchedTerms, int resultSize, List<String> languages, String scoreOption) {
+
         createViews();
-        List<SearchResult> foundItems = new ArrayList<>();
-        if (searchedTerms.length != 0) {
-            int searchedTermsCount = searchedTerms.length;
-            List<String> stemmedSearchedTerms = Arrays.stream(searchedTerms)
-                    .map(term -> {
-                        String stemmedWord = stemWord(term);
-                        // Check for corrections
-                        String correctedTerm = suggestionCorrectionIfNecessary(stemmedWord, term);
-                        return !correctedTerm.isEmpty() ? correctedTerm : stemmedWord;
-                    })
-                    .collect(Collectors.toList());
+        List<SearchResult> found = new ArrayList<>();
+        if (searchedTerms.length == 0) return found;
 
-            String insertedSearchedTerms = String.join(",", Collections.nCopies(searchedTermsCount, "?"));
-            String insertedLanguages = String.join(",", Collections.nCopies(languages.size(), "?"));
+        List<String> stemmed = stemAndCorrect(searchedTerms);
+        String viewName = "BM25".equalsIgnoreCase(scoreOption) ? "features_bm25" : "features_tfidf";
+        String placeholders = String.join(",", Collections.nCopies(stemmed.size(), "?"));
+        String langPlaceholders = String.join(",", Collections.nCopies(languages.size(), "?"));
 
-            String viewName = "features_tfidf";
-            if ("BM25".equalsIgnoreCase(scoreOption)) {
-                viewName = "features_bm25";
+        String sql =
+            "SELECT d.docid, d.url, f.score " +
+            "FROM documents d " +
+            "JOIN (SELECT docid, SUM(score) AS score FROM " + viewName +
+            "      WHERE term IN (" + placeholders + ") GROUP BY docid HAVING COUNT(DISTINCT term) = ?) f " +
+            "ON d.docid = f.docid " +
+            "WHERE d.lang IN (" + langPlaceholders + ") " +
+            "ORDER BY f.score DESC LIMIT ?";
+
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            int idx = 1;
+            for (String t : stemmed) ps.setString(idx++, t);
+            ps.setInt(idx++, stemmed.size());
+            for (String l : languages) ps.setString(idx++, l);
+            ps.setInt(idx, resultSize);
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                found.add(new SearchResult(rs.getInt("docid"), rs.getString("url"), rs.getDouble("score")));
             }
-            String conjunctiveQuery =
-                    "SELECT d.docid, d.url, f.score AS score " +
-                            "FROM documents d " +
-                            "JOIN (" +
-                            "   SELECT docid, SUM(score) AS score " +
-                            "   FROM " + viewName + " " +
-                            "   WHERE term IN (" + insertedSearchedTerms + ") " +
-                            "   GROUP BY docid " +
-                            "   HAVING COUNT(DISTINCT term) = ? " +
-                            ") f " +
-                            "ON d.docid = f.docid " +
-                            "WHERE d.lang IN (" + insertedLanguages + ") " +
-                            "ORDER BY f.score DESC " +
-                            "LIMIT ?";
-
-            try (PreparedStatement preparedStatement = connection.prepareStatement(conjunctiveQuery)) {
-                int parameterIndex = 1;
-                for (String term : stemmedSearchedTerms) {
-                    preparedStatement.setString(parameterIndex++, term);
-                }
-
-                preparedStatement.setInt(parameterIndex++, searchedTermsCount);
-                for (String lang : languages) {
-                    preparedStatement.setString(parameterIndex++, lang);
-                }
-                preparedStatement.setInt(parameterIndex, resultSize);
-
-                ResultSet resultSet = preparedStatement.executeQuery();
-                while (resultSet.next()) {
-                    int foundDocid = resultSet.getInt("docid");
-                    String foundDocURL = resultSet.getString("url");
-                    double foundDocScore = resultSet.getDouble("score");
-
-                    foundItems.add(new SearchResult(foundDocid, foundDocURL, foundDocScore));
-                }
-            } catch (SQLException e) {
-                throw new RuntimeException(e);
-            }
+        } catch (SQLException e) {
+            throw new RuntimeException("conjuntiveCrawling: " + e.getMessage(), e);
         }
-
-        return foundItems;
+        return found;
     }
 
-    public List<SearchResult> disjunctiveCrawling(String[] searchedTerms, int resultSize, List<String> languages, String scoreOption) {
+    public List<SearchResult> disjunctiveCrawling(
+            String[] searchedTerms, int resultSize, List<String> languages, String scoreOption) {
 
-        List<SearchResult> foundItems = new ArrayList<>();
-        if (searchedTerms.length != 0) {
-            int searchedTermsCount = searchedTerms.length;
-            List<String> stemmedSearchedTerms = Arrays.stream(searchedTerms)
-                    .map(term -> {
-                        String stemmedWord = stemWord(term);
-                        // Check for corrections
-                        String correctedTerm = suggestionCorrectionIfNecessary(stemmedWord, term);
-                        return !correctedTerm.isEmpty() ? correctedTerm : stemmedWord;
-                    })
-                    .collect(Collectors.toList());
+        List<SearchResult> found = new ArrayList<>();
+        if (searchedTerms.length == 0) return found;
 
-            String insertedSearchedTerms = String.join(",", Collections.nCopies(searchedTermsCount, "?"));
-            String insertedLanguages = String.join(",", Collections.nCopies(languages.size(), "?"));
+        List<String> stemmed = stemAndCorrect(searchedTerms);
+        String viewName = "BM25".equalsIgnoreCase(scoreOption) ? "features_bm25" : "features_tfidf";
+        String placeholders = String.join(",", Collections.nCopies(stemmed.size(), "?"));
+        String langPlaceholders = String.join(",", Collections.nCopies(languages.size(), "?"));
 
-            String viewName = "features_tfidf";
-            if ("BM25".equalsIgnoreCase(scoreOption)) {
-                viewName = "features_bm25";
+        String sql =
+            "SELECT d.docid, d.url, f.score " +
+            "FROM documents d " +
+            "JOIN (SELECT docid, SUM(score) AS score FROM " + viewName +
+            "      WHERE term IN (" + placeholders + ") GROUP BY docid) f " +
+            "ON d.docid = f.docid " +
+            "WHERE d.lang IN (" + langPlaceholders + ") " +
+            "ORDER BY f.score DESC LIMIT ?";
+
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            int idx = 1;
+            for (String t : stemmed) ps.setString(idx++, t);
+            for (String l : languages) ps.setString(idx++, l);
+            ps.setInt(idx, resultSize);
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                found.add(new SearchResult(rs.getInt("docid"), rs.getString("url"), rs.getDouble("score")));
             }
-            String disjunctiveQuery =
-                    "SELECT d.docid, d.url, f.score AS score " +
-                            "FROM documents d " +
-                            "JOIN (" +
-                            "   SELECT docid, SUM(score) AS score " +
-                            "   FROM " + viewName + " " +
-                            "   WHERE term IN (" + insertedSearchedTerms + ") " +
-                            "   GROUP BY docid " +
-                            ") f " +
-                            "ON d.docid = f.docid " +
-                            "WHERE d.lang IN (" + insertedLanguages + ") " +
-                            "ORDER BY f.score DESC " +
-                            "LIMIT ?";
-
-            try (PreparedStatement preparedStatement = connection.prepareStatement(disjunctiveQuery)) {
-                int parameterIndex = 1;
-
-                for (String term : stemmedSearchedTerms) {
-                    preparedStatement.setString(parameterIndex++, term);
-                }
-                for (String lang : languages) {
-                    preparedStatement.setString(parameterIndex++, lang);
-                }
-
-                preparedStatement.setInt(parameterIndex, resultSize);
-
-                ResultSet resultSet = preparedStatement.executeQuery();
-                while (resultSet.next()) {
-                    int foundDocid = resultSet.getInt("docid");
-                    String foundDocURL = resultSet.getString("url");
-                    double foundDocScore = resultSet.getDouble("score");
-
-                    foundItems.add(new SearchResult(foundDocid, foundDocURL, foundDocScore));
-                }
-            } catch (SQLException e) {
-                throw new RuntimeException(e);
-            }
+        } catch (SQLException e) {
+            throw new RuntimeException("disjunctiveCrawling: " + e.getMessage(), e);
         }
-        return foundItems;
+        return found;
     }
 
+    private List<String> stemAndCorrect(String[] terms) {
+        return Arrays.stream(terms)
+                .map(t -> {
+                    String stemmed = stemWord(t);
+                    String corrected = suggestionCorrectionIfNecessary(stemmed, t);
+                    return !corrected.isEmpty() ? corrected : stemmed;
+                })
+                .collect(Collectors.toList());
+    }
 
-    // Queries For Exercise 4
-    public JSONArray computeStat(String[] conjunctiveSearchedTerms, String[] disjunctiveSearchedTerms ) {
+    // ── JSON Interface (Sheet 1 – Exercise 4) ─────────────────────────────────
+
+    public JSONArray computeStat(String[] conjunctiveTerms, String[] disjunctiveTerms) {
         JSONArray statArray = new JSONArray();
-        String query = "SELECT  COUNT(docid) AS df FROM features WHERE term = ? ";
-
-        List<String> totalSearchResult = Stream.concat(
-                Arrays.stream(conjunctiveSearchedTerms),
-                Arrays.stream(disjunctiveSearchedTerms)
+        List<String> allTerms = Stream.concat(
+                Arrays.stream(conjunctiveTerms),
+                Arrays.stream(disjunctiveTerms)
         ).collect(Collectors.toList());
 
-
-        List<String> stemmedSearchedTerms = totalSearchResult.stream()
-                .map(term -> stemWord(term))
-                .collect(Collectors.toList());
-
-        try {
-            PreparedStatement preparedStatement = connection.prepareStatement(query);
-
-            for (int i = 0; i < stemmedSearchedTerms.size(); i++) {
-                preparedStatement.setString(1, stemmedSearchedTerms.get(i));
-                ResultSet resultSet = preparedStatement.executeQuery();
-
-                if (resultSet.next()) {
-                    JSONObject termObject = new JSONObject();
-                    termObject.put("term", totalSearchResult.get(i));
-                    termObject.put("df", resultSet.getInt("df"));
-                    statArray.put(termObject);
-                } else {
-                    // If the term does not exist in any document, set df to 0
-                    JSONObject termObject = new JSONObject();
-                    termObject.put("term", totalSearchResult.get(i));
-                    termObject.put("df", 0);
-                    statArray.put(termObject);
-                }
-                resultSet.close();
+        String sql = "SELECT COUNT(DISTINCT docid) AS df FROM features WHERE term = ?";
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            for (int i = 0; i < allTerms.size(); i++) {
+                String stemmed = stemWord(allTerms.get(i));
+                ps.setString(1, stemmed);
+                ResultSet rs = ps.executeQuery();
+                JSONObject obj = new JSONObject();
+                obj.put("term", allTerms.get(i));
+                obj.put("df", rs.next() ? rs.getInt("df") : 0);
+                statArray.put(obj);
             }
-            preparedStatement.close();
         } catch (SQLException e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException("computeStat: " + e.getMessage(), e);
         }
-
         return statArray;
-
     }
+
     public int calcualteCW() {
-        String query = "SELECT count(DISTINCT term) from features\n";
-
-        try( Statement stmt = connection.createStatement() ;
-            ResultSet rs = stmt.executeQuery(query)) {
-                rs.next();
-                return rs.getInt(1);
+        try (Statement stmt = connection.createStatement();
+             ResultSet rs = stmt.executeQuery("SELECT COUNT(DISTINCT term) FROM features")) {
+            return rs.next() ? rs.getInt(1) : 0;
         } catch (SQLException e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException("calcualteCW: " + e.getMessage(), e);
         }
     }
 
+    // ── PageRank (Sheet 2 – Exercise 1) ──────────────────────────────────────
 
-/*-----------------------------------------------------------------------------------------------------
------------------------sheet 2 -------------------------------------------------------------------------
--------------------------------------------------------------------------------------------------------
-*/
-
-// Exercise 1
     public void extendDocumentsWithPagerankColumn() {
-        Statement statement;
-        try {
-            String query = "ALTER TABLE Documents " +
-                    "ADD COLUMN IF NOT EXISTS pagerank DOUBLE PRECISION;";
-
-            statement = connection.createStatement();
-            statement.executeUpdate(query);
+        try (Statement stmt = connection.createStatement()) {
+            stmt.executeUpdate("ALTER TABLE documents ADD COLUMN IF NOT EXISTS pagerank DOUBLE PRECISION DEFAULT 0");
         } catch (SQLException e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException("extendDocumentsWithPagerankColumn: " + e.getMessage(), e);
         }
     }
-    public Matrix createLinkMatrix(double tp) {
-        String getDocsQuery = "SELECT docid FROM documents ORDER BY docid";
+
+    public Matrix createLinkMatrix(double teleportProb) {
+        String docsQuery  = "SELECT docid FROM documents ORDER BY docid";
         String linksQuery = "SELECT from_docid, to_docid FROM links";
         Map<Integer, List<Integer>> linkMap = new HashMap<>();
         int n = 0;
 
-        // Map docids to indexes
-        try (Statement stmt = connection.createStatement();
-             ResultSet rs = stmt.executeQuery(getDocsQuery)) {
+        try (Statement stmt = connection.createStatement(); ResultSet rs = stmt.executeQuery(docsQuery)) {
             while (rs.next()) {
                 int docId = rs.getInt("docid");
                 docIdToIndex.put(docId, n);
-                indexToDocId.put(n,docId);
+                indexToDocId.put(n, docId);
                 n++;
-
             }
         } catch (SQLException e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException("createLinkMatrix (docs): " + e.getMessage(), e);
         }
 
-        // Create a map of outgoing links for each page
-        try (Statement stmt = connection.createStatement();
-             ResultSet rs = stmt.executeQuery(linksQuery)) {
+        try (Statement stmt = connection.createStatement(); ResultSet rs = stmt.executeQuery(linksQuery)) {
             while (rs.next()) {
-                int fromDocId = rs.getInt("from_docid");
-                int toDocId = rs.getInt("to_docid");
-                int fromIndex = docIdToIndex.get(fromDocId);
-                int toIndex = docIdToIndex.get(toDocId);
-
-                linkMap.computeIfAbsent(fromIndex, k -> new ArrayList<>()).add(toIndex);
+                int from = rs.getInt("from_docid");
+                int to   = rs.getInt("to_docid");
+                if (docIdToIndex.containsKey(from) && docIdToIndex.containsKey(to)) {
+                    linkMap.computeIfAbsent(docIdToIndex.get(from), k -> new ArrayList<>())
+                           .add(docIdToIndex.get(to));
+                }
             }
         } catch (SQLException e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException("createLinkMatrix (links): " + e.getMessage(), e);
         }
 
-        // Create the initial matrix
-        Matrix linkMatrix = new Basic2DMatrix(n, n);
-        double teleportationProb = tp / n;
+        Matrix matrix = new Basic2DMatrix(n, n);
+        double tpProb = teleportProb / n;
+
         for (int i = 0; i < n; i++) {
-            List<Integer> outgoingLinks = linkMap.getOrDefault(i, new ArrayList<>());
-            int outDegree = outgoingLinks.size();
-
+            List<Integer> outLinks = linkMap.getOrDefault(i, Collections.emptyList());
+            int outDegree = outLinks.size();
             if (outDegree == 0) {
-                // Dangling node: distribute teleportation probability equally across all nodes
-                for (int j = 0; j < n; j++) {
-                    linkMatrix.set(i, j, teleportationProb);
-                }
+                // Dangling node: uniform distribution
+                for (int j = 0; j < n; j++) matrix.set(i, j, tpProb);
             } else {
-                // Page with outgoing links: apply both link probability and teleportation probability
-                double linkProb = (1 - tp) / outDegree;
+                double linkProb = (1 - teleportProb) / outDegree;
                 for (int j = 0; j < n; j++) {
-                    if (outgoingLinks.contains(j)) {
-                        // Link probability + teleportation probability
-                        linkMatrix.set(i, j, linkProb + teleportationProb);
-                    } else {
-                        // Teleportation probability only
-                        linkMatrix.set(i, j, teleportationProb);
-                    }
+                    matrix.set(i, j, outLinks.contains(j) ? linkProb + tpProb : tpProb);
                 }
             }
         }
-
-        return linkMatrix;
+        return matrix;
     }
-    public void insertPageRanking(BasicVector rank) {
-        String query = "UPDATE documents SET pagerank = ? WHERE docid = ?";
-        this.extendDocumentsWithPagerankColumn();
 
-        try (PreparedStatement preparedStatement = connection.prepareStatement(query)) {
+    public void insertPageRanking(BasicVector rank) {
+        extendDocumentsWithPagerankColumn();
+        String sql = "UPDATE documents SET pagerank = ? WHERE docid = ?";
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
             for (int i = 0; i < rank.length(); i++) {
-                int docId = indexToDocId.get(i);
-                double pageRank = rank.get(i);
-                preparedStatement.setDouble(1, pageRank);
-                preparedStatement.setInt(2, docId);
-                preparedStatement.executeUpdate();
+                ps.setDouble(1, rank.get(i));
+                ps.setInt(2, indexToDocId.get(i));
+                ps.executeUpdate();
             }
         } catch (SQLException e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException("insertPageRanking: " + e.getMessage(), e);
         }
     }
 
-// Exercise 2
+    // ── BM25 + Views (Sheet 2 – Exercise 2) ──────────────────────────────────
+
     public void calculateBM25InDatabase() throws SQLException {
-        //Step 1: Calculate the PageRank value using calculatePageRanking()
-        PageRank pr = new PageRank();
-        pr.calculatePageRanking(this);
+        // PageRank erst berechnen (wird in BM25 kombiniert)
+        new PageRank().calculatePageRanking(this);
 
-        // Step 2: Calculate and update BM25 values
+        String sql =
+            "WITH bm25_scores AS (" +
+            "  SELECT f.docid, f.term," +
+            "    (f.tf * LOG((SELECT COUNT(*) FROM documents)::double precision / NULLIF(df.cnt, 0))) AS bm25" +
+            "  FROM features f" +
+            "  JOIN (SELECT term, COUNT(DISTINCT docid) AS cnt FROM features GROUP BY term) df ON f.term = df.term" +
+            ")," +
+            "combined AS (" +
+            "  SELECT b.docid, b.term, b.bm25 + COALESCE(d.pagerank, 0) AS combined_score" +
+            "  FROM bm25_scores b LEFT JOIN documents d ON b.docid = d.docid" +
+            ")" +
+            "UPDATE features SET bm25 = combined.combined_score" +
+            " FROM combined" +
+            " WHERE features.docid = combined.docid AND features.term = combined.term";
 
-        String bm25UpdateQuery = """
-        WITH bm25_scores AS (
-           SELECT\s
-               f.docid,
-               f.term,
-               (f.tf * LOG((SELECT COUNT(*) FROM documents)::double precision / df)) AS bm25
-           FROM features f
-           JOIN (
-               SELECT\s
-                   term,
-                   COUNT(DISTINCT docid) AS df
-               FROM features
-               GROUP BY term
-           ) term_df ON f.term = term_df.term
-       ),
-       combined_scores AS (
-           SELECT\s
-               bm25.docid,
-               bm25.term,
-               bm25.bm25 + COALESCE(d.pagerank, 0) AS combined_score  
-           FROM bm25_scores bm25
-           LEFT JOIN documents d ON bm25.docid = d.docid  
-       )
-       UPDATE features
-       SET bm25 = combined_scores.combined_score
-       FROM combined_scores
-       WHERE features.docid = combined_scores.docid
-         AND features.term = combined_scores.term;
-    """;
-
-        try (PreparedStatement ps = connection.prepareStatement(bm25UpdateQuery)) {
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.executeUpdate();
         }
-
     }
+
     public void createViews() {
         try (Statement stmt = connection.createStatement()) {
-            // View zur schnellen Berechnung der Document Length (Summe der Term-Frequenzen)
-           /* String createDocumentLengthView = """
-            CREATE OR REPLACE VIEW document_length_view AS
-            SELECT
-                docid,
-                SUM(term_frequency) AS document_length
-            FROM features
-            GROUP BY docid;
-        """;
-            stmt.executeUpdate(createDocumentLengthView);
-            System.out.println("Document Length View created");
-
-            // View zur Berechnung der durchschnittlichen Dokumentenlänge
-            String createAverageLengthView = """
-            CREATE OR REPLACE VIEW average_length_view AS
-            SELECT
-                AVG(document_length) AS average_length
-            FROM document_length_view;
-        """;
-            stmt.executeUpdate(createAverageLengthView);
-            System.out.println("Average Length View created");*/
-
-            // View zur Berechnung der BM25-Score für jedes Dokument
-            String features_bm25 = """
-            CREATE OR REPLACE VIEW features_bm25 AS
-            SELECT
-                f.docid,
-                f.term,
-                f.bm25 AS score
-            FROM features f;
-        """;
-            stmt.executeUpdate(features_bm25);
-            System.out.println("BM25 View created");
-
-            String features_tfidf = """
-                    CREATE OR REPLACE VIEW features_tfidf AS
-                            SELECT\s
-                                docid,\s
-                                term,\s
-                                tfidf AS score
-                            FROM features;
-                    """;
-            stmt.executeUpdate(features_tfidf);
-            System.out.println("TFIDF View created");
+            stmt.executeUpdate(
+                "CREATE OR REPLACE VIEW features_bm25 AS " +
+                "SELECT docid, term, bm25 AS score FROM features"
+            );
+            stmt.executeUpdate(
+                "CREATE OR REPLACE VIEW features_tfidf AS " +
+                "SELECT docid, term, tfidf AS score FROM features"
+            );
+            System.out.println("Views features_bm25 + features_tfidf created.");
         } catch (SQLException e) {
-            System.err.println("Fehler beim Erstellen der Views: " + e.getMessage());
-            e.printStackTrace();
+            System.err.println("createViews error: " + e.getMessage());
         }
     }
 
-// Exercise 4
-    // This function update the lang column with the corresponding language of the document
+    // ── Language (Sheet 2 – Exercise 4) ──────────────────────────────────────
+
     public void updateLanguageDocuments(String url, String lang) {
-        String query = "UPDATE documents SET lang = ? WHERE url = ?";
-        try (PreparedStatement ps = connection.prepareStatement(query)) {
+        String sql = "UPDATE documents SET lang = ? WHERE url = ?";
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setString(1, lang);
             ps.setString(2, url);
             ps.executeUpdate();
@@ -709,61 +560,44 @@ public class DBConnection {
             e.printStackTrace();
         }
     }
-    // This function suggests a correction for a misspelled word
-    public String suggestionCorrectionIfNecessary(String searchedWord, String term) {
-        // Query to check if the word exists in the database
-        String checkExistenceQuery = "SELECT term FROM features WHERE term = ?";
-        // If the searchedWord exists in the features table
-        try (PreparedStatement stmt = connection.prepareStatement(checkExistenceQuery)) {
-            stmt.setString(1, searchedWord);
-            try (ResultSet rs = stmt.executeQuery()) {
-                if (rs.next()) {
-                    // Word exists, no correction needed
-                    return "";
-                }
+
+    // ── Spell Correction (Sheet 2 – Exercise 4) ───────────────────────────────
+
+    public String suggestionCorrectionIfNecessary(String searchedWord, String originalTerm) {
+        // Wort existiert? → keine Korrektur nötig
+        try (PreparedStatement ps = connection.prepareStatement(
+                "SELECT term FROM features WHERE term = ? LIMIT 1")) {
+            ps.setString(1, searchedWord);
+            if (ps.executeQuery().next()) return "";
+        } catch (SQLException e) {
+            throw new RuntimeException("suggestionCorrectionIfNecessary (check): " + e.getMessage(), e);
+        }
+
+        // fuzzystrmatch Extension sicherstellen
+        try (Statement stmt = connection.createStatement()) {
+            stmt.execute("CREATE EXTENSION IF NOT EXISTS fuzzystrmatch");
+        } catch (SQLException e) {
+            throw new RuntimeException("fuzzystrmatch extension error: " + e.getMessage(), e);
+        }
+
+        // Nächstes ähnliches Wort (Levenshtein ≤ 1)
+        String sql =
+            "SELECT term, COUNT(*) AS frequency FROM features " +
+            "WHERE levenshtein(term, ?) <= 1 " +
+            "GROUP BY term ORDER BY frequency DESC LIMIT 1";
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setString(1, searchedWord);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) {
+                String corrected = rs.getString("term");
+                System.out.println("Spell correction: '" + originalTerm + "' → '" + corrected + "'");
+                return corrected;
             }
         } catch (SQLException e) {
-            throw new RuntimeException("Error checking word existence: " + searchedWord, e);
+            throw new RuntimeException("suggestionCorrectionIfNecessary (levenshtein): " + e.getMessage(), e);
         }
 
-        // If the word doesn't exist, find the most similar word using Levenshtein distance
-        try (Statement createExtensionStmt = connection.createStatement()) {
-            createExtensionStmt.execute("CREATE EXTENSION IF NOT EXISTS fuzzystrmatch;");
-        } catch (SQLException e) {
-            throw new RuntimeException("Error ensuring fuzzystrmatch extension exists", e);
-        }
-        String correctionQuery =
-                "SELECT term, COUNT(*) AS frequency " +
-                        "FROM features " +
-                        "WHERE levenshtein(term, ?) <= 1 " +
-                        "GROUP BY term " +
-                        "ORDER BY frequency DESC " +
-                        "LIMIT 1";
-
-        try (PreparedStatement stmt = connection.prepareStatement(correctionQuery)) {
-            stmt.setString(1, searchedWord);
-
-            try (ResultSet rs = stmt.executeQuery()) {
-                if (rs.next()) {
-                    // Return the most similar word
-                    String correctedWord = rs.getString("term");
-                    System.out.println("The word '" + term + "' is misspelled but has been corrected and replaced with the stemmed word: '" + correctedWord + "'.");
-                    return correctedWord;
-                }
-            }
-        } catch (SQLException e) {
-            throw new RuntimeException("Error finding correction for word: " + searchedWord, e);
-        }
-
-        // No correction found
-        System.out.println("The word '" + term + "' is misspelled and could not be corrected.");
+        System.out.println("No correction found for: '" + originalTerm + "'");
         return "";
     }
-
-
-
 }
-
-
-
-

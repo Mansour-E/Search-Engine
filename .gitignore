@@ -36,3 +36,17 @@ build/
 
 ### Mac OS ###
 .DS_Store
+
+### Environment / Secrets ###
+.env
+.env.local
+.env.production
+
+### React / Node ###
+frontend/node_modules/
+frontend/build/
+frontend/.env
+frontend/.env.local
+
+### Docker ###
+*.log
