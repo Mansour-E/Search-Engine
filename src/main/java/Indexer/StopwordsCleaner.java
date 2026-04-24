@@ -15,7 +15,6 @@ public class StopwordsCleaner {
     private static final String COMMENT_REGEX = "\\|.*";
 
     public StopwordsCleaner() throws IOException {
-        // Load stopwords only once for all instances
         if (englishStopwords.isEmpty()) {
             System.out.println("Loading English stopwords...");
             loadStopwords("englishStopwords.txt", englishStopwords);
@@ -26,7 +25,6 @@ public class StopwordsCleaner {
         }
     }
 
-    // Load stopwords from a file using ClassLoader
     private void loadStopwords(String filename, Set<String> stopwords) throws IOException {
         try (InputStream inputStream = getClass().getClassLoader().getResourceAsStream(filename)) {
             if (inputStream == null) {
@@ -35,7 +33,6 @@ public class StopwordsCleaner {
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
                 List<String> lines = reader.lines().collect(Collectors.toList());
                 for (String line : lines) {
-                    // Remove comments and trim whitespace
                     line = line.replaceAll(COMMENT_REGEX, "").trim();
                     if (!line.isEmpty()) {
                         stopwords.add(line.toLowerCase());
@@ -48,22 +45,18 @@ public class StopwordsCleaner {
         }
     }
 
-    // Clean English word by retaining only alphabetic characters
     public String cleanEnglishWord(String word) {
         return word.replaceAll("[^a-zA-Z]", "").toLowerCase();
     }
 
-    // Check if an English word is valid (not a stopword)
     public boolean isEnglishWordValid(String word) {
         return !word.isEmpty() && !englishStopwords.contains(word) && word.length() >= 2 && word.length() <= 15;
     }
 
-    // Clean German word by retaining only valid characters
     public String cleanGermanWord(String word) {
         return word.replaceAll("[^a-zA-ZäöüÄÖÜß]", "").toLowerCase();
     }
 
-    // Check if a German word is valid (not a stopword)
     public boolean isGermanWordValid(String word) {
         return !word.isEmpty() && !germanStopwords.contains(word) && word.length() >= 2 && word.length() <= 15;
     }

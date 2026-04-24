@@ -7,7 +7,6 @@ import org.la4j.vector.dense.BasicVector;
 public class PageRank {
 
     private static final double TELEPORT_PROBABILITY = 0.1;
-    // Convergence threshold for power iteration
     private static final double CONVERGENCE_THRESHOLD = 1e-6;
     private static final int MAX_ITERATIONS = 100;
 
@@ -25,7 +24,6 @@ public class PageRank {
         for (int t = 0; t < MAX_ITERATIONS; t++) {
             BasicVector newRank = (BasicVector) linkMatrix.multiply(rank);
 
-            // Check convergence: sum of absolute differences
             double delta = 0.0;
             for (int i = 0; i < n; i++) {
                 delta += Math.abs(newRank.get(i) - rank.get(i));
